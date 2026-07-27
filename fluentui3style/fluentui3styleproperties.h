@@ -37,6 +37,7 @@ enum ProgressBarStyle
 [[maybe_unused]] constexpr const char *SliderValueTipProperty = "showValueTip";
 [[maybe_unused]] constexpr const char *SliderValueTipHooksProperty = "sliderValueTipHooks";
 [[maybe_unused]] constexpr const char *SliderValueTipLabelProperty = "sliderValueTipLabel";
+[[maybe_unused]] constexpr const char *ComboBoxPopupAnimationEnabledProperty = "comboBoxPopupAnimationEnabled";
 enum DialStyle
 {
     DialDots = 1,

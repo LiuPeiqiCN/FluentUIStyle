@@ -121,6 +121,8 @@ private:
     mutable QFont assetFont;
     bool highContrastTheme;
     mutable int colorSchemeIndex = 0;
+    bool comboBoxAnimationEffectSaved = false;
+    bool oldComboBoxAnimationEffect = false;
 };
 
 #endif // FLUENTUI3STYLE_H

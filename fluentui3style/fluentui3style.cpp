@@ -56,6 +56,7 @@
 // #include <private/qhexstring_p.h>
 
 #include "fluentui3colors.h"
+#include "comboboxpopupanimation_p.h"
 #include "fluentui3styleproperties.h"
 #include "palettemanager.h"
 #include "qapplication.h"
@@ -84,6 +85,29 @@ static constexpr int menuItemHMargin = 3;  // horizontal margin for menu items
 
 static constexpr int cBShadowBorderWidth = 2;
 static constexpr int cBRoundingRadius    = 4;
+static constexpr int cBPopupOffset       = 2;
+static constexpr int cBPopupAnimationDuration = 400;
+static constexpr const char* cBPopupAnimatorProperty = "_q_fluent_combo_popup_animator";
+
+static QMarginsF comboBoxPopupPanelMargins( const QWidget* popup )
+{
+    const QMarginsF shadowMargins(
+        cBShadowBorderWidth,
+        cBShadowBorderWidth,
+        cBShadowBorderWidth,
+        cBShadowBorderWidth );
+
+    QComboBox* comboBox = ComboBoxPopupAnimator::comboBoxForPopup( popup );
+    if ( !comboBox || !ComboBoxPopupAnimator::isEnabled( comboBox ) )
+    {
+        return shadowMargins;
+    }
+
+    const bool opensAbove = popup->property( ComboBoxPopupOpensAboveProperty ).toBool();
+    return opensAbove
+        ? QMarginsF( cBShadowBorderWidth, cBShadowBorderWidth, cBShadowBorderWidth, 0 )
+        : QMarginsF( cBShadowBorderWidth, 0, cBShadowBorderWidth, cBShadowBorderWidth );
+}
 
 static constexpr int ProgressBarThickness       = 4;
 static constexpr int NavigationSettingsSpinRole = Qt::UserRole + 1001;
@@ -1491,7 +1515,6 @@ inline int getColorSchemeIndex()  // 0 = Light, 1 = Dark
     const QVariant pColorScheme = qApp->property( "_q_colorscheme" );
     if ( pColorScheme.isValid() )
     {
-        qDebug() << "[FluentUI3Style] Get _q_colorscheme:" << pColorScheme.toInt();
         return pColorScheme.toInt();
     }
 
@@ -1724,7 +1747,7 @@ void FluentUI3Style::drawComplexControl( ComplexControl control,
                 t->setStartValue( start );
                 t->setEndValue( end );
                 t->setFrameRate( QStyleAnimation::DefaultFps );
-                t->setDuration( 180 );
+                t->setDuration( 300 );
                 startAnimation( t );
             }
         }
@@ -2050,7 +2073,7 @@ void FluentUI3Style::drawComplexControl( ComplexControl control,
                 {
                     QRectF arrowRect = proxy()->subControlRect( CC_ComboBox, option, SC_ComboBoxArrow, widget ).adjusted( 4, 0, -4, 0 );
                     static QFont f   = assetFont;
-                    f.setPixelSize( 14 );
+                    f.setPixelSize( 15 );
                     painter->setFont( f );
                     painter->setPen( controlTextColor( option ) );
                     QNumberStyleAnimation* animation = qobject_cast<QNumberStyleAnimation*>( getAnimation( option->styleObject ) );
@@ -2982,7 +3005,7 @@ void FluentUI3Style::drawPrimitive( PrimitiveElement element, const QStyleOption
                     drawFluentShadow( painter, rect.toRect(), cBShadowBorderWidth, cBRoundingRadius );
                     painter->setBrush( winUI3Color( menuPanelFill ) );
                     auto pRect = QRectF( rect ).marginsRemoved(
-                        QMarginsF( cBShadowBorderWidth, cBShadowBorderWidth, cBShadowBorderWidth, cBShadowBorderWidth ) );
+                        comboBoxPopupPanelMargins( widget ) );
                     painter->drawRoundedRect( pRect, cBRoundingRadius, cBRoundingRadius );
                 }
                 else
@@ -5743,7 +5766,7 @@ void FluentUI3Style::drawControl( ControlElement element, const QStyleOption* op
                     painter->setBrush( winUI3Color( menuPanelFill ) );
                     auto pRect = QRectF( option->rect )
                                      .marginsRemoved(
-                                         QMarginsF( cBShadowBorderWidth, cBShadowBorderWidth, cBShadowBorderWidth, cBShadowBorderWidth ) );
+                                         comboBoxPopupPanelMargins( widget ) );
                     painter->drawRoundedRect( pRect, cBRoundingRadius, cBRoundingRadius );
                     break;
                 }
@@ -7534,7 +7557,9 @@ int FluentUI3Style::pixelMetric( PixelMetric metric, const QStyleOption* option,
             }
             if ( isComboBoxPopup( const_cast<QWidget*>( widget ) ) )
             {
-                res = 2 + cBShadowBorderWidth;
+                // 该 metric 只决定 Container 内部 frame/layout，不能用于
+                // popup 顶层窗口定位；动画的 2px 外部偏移由动画器负责。
+                res = cBPopupOffset + cBShadowBorderWidth;
             }
         }
         break;
@@ -7570,6 +7595,13 @@ void FluentUI3Style::polish( QPalette& result )
 void FluentUI3Style::polish( QApplication* app )
 {
     QProxyStyle::polish( app );
+
+    if ( !comboBoxAnimationEffectSaved )
+    {
+        oldComboBoxAnimationEffect = app->isEffectEnabled( Qt::UI_AnimateCombo );
+        comboBoxAnimationEffectSaved = true;
+    }
+    app->setEffectEnabled( Qt::UI_AnimateCombo, false );
 }
 
 void FluentUI3Style::polish( QWidget* widget )
@@ -7592,6 +7624,17 @@ void FluentUI3Style::polish( QWidget* widget )
         if (cb->parent() && cb->parent()->inherits("QAbstractItemView"))
         {
             cb->setAutoFillBackground(true);
+        }
+
+        QObject* animatorObject = cb->property( cBPopupAnimatorProperty ).value<QObject*>();
+        if ( !animatorObject )
+        {
+            auto* animator = new ComboBoxPopupAnimator( cb, cb );
+            animator->setDuration( cBPopupAnimationDuration );
+            animator->setCornerRadius( cBRoundingRadius );
+            animator->setPopupOffset( cBPopupOffset );
+            animator->setShadowBorderWidth( cBShadowBorderWidth );
+            cb->setProperty( cBPopupAnimatorProperty, QVariant::fromValue<QObject*>( animator ) );
         }
     }
 
@@ -7802,6 +7845,17 @@ void FluentUI3Style::unpolish( QWidget* widget )
     {
         hideSliderValueTip( slider );
     }
+    if ( auto* comboBox = qobject_cast<QComboBox*>( widget ) )
+    {
+        auto* animator = static_cast<ComboBoxPopupAnimator*>(
+            comboBox->property( cBPopupAnimatorProperty ).value<QObject*>() );
+        comboBox->setProperty( cBPopupAnimatorProperty, QVariant() );
+        if ( animator )
+        {
+            animator->stop();
+        }
+        delete animator;
+    }
 
     if ( qobject_cast<QTabBar*>( widget ) && widget->property( TabBarStyleProperty ).toInt() == TabBarStyle::Segmented_WinUI3 )
     {
@@ -7850,6 +7904,11 @@ void FluentUI3Style::unpolish( QWidget* widget )
 
 void FluentUI3Style::unpolish( QApplication* app )
 {
+    if ( comboBoxAnimationEffectSaved )
+    {
+        app->setEffectEnabled( Qt::UI_AnimateCombo, oldComboBoxAnimationEffect );
+        comboBoxAnimationEffectSaved = false;
+    }
     QProxyStyle::unpolish( app );
 }
 

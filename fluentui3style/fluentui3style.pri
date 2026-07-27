@@ -13,6 +13,7 @@ HEADERS += \
     $$PWD/fluentui3style_global.h
 
 SOURCES += \
+    $$PWD/comboboxpopupanimation_p.cpp \
     $$PWD/fluentui3style.cpp \
     $$PWD/fluentuiappearance.cpp \
     $$PWD/palettemanager.cpp \

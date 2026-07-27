@@ -1,4 +1,6 @@
 set(PLUGIN_SOURCES
+    ../comboboxpopupanimation_p.cpp
+    ../comboboxpopupanimation_p.h
     ../fluentui3style.cpp
     ../fluentui3style.h
     ../fluentui3styleproperties.h

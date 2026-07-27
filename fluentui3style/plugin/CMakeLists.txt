@@ -57,6 +57,16 @@ set_target_properties(FluentUI3StylePlugin PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY_MINSIZEREL ${CMAKE_BINARY_DIR}/plugins/styles
 )
 
+if(MSVC)
+    # 使 Release 模式下也生成 PDB 调试文件，并保持 Release 优化
+    target_compile_options(FluentUI3StylePlugin PRIVATE
+        $<$<CONFIG:Release>:/Zi>
+    )
+    target_link_options(FluentUI3StylePlugin PRIVATE
+        $<$<CONFIG:Release>:/DEBUG /OPT:REF /OPT:ICF>
+    )
+endif()
+
 
 
 

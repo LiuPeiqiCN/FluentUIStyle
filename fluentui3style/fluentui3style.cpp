@@ -7586,6 +7586,15 @@ void FluentUI3Style::polish( QWidget* widget )
         widget->setAttribute( Qt::WA_NoSystemBackground, false );
     }
 
+    //由于QComboBox绘制底色带透明度，在表格时，会显示出单元格内容
+    if (auto cb = qobject_cast<QComboBox*>(widget))
+    {
+        if (cb->parent() && cb->parent()->inherits("QAbstractItemView"))
+        {
+            cb->setAutoFillBackground(true);
+        }
+    }
+
     if ( qobject_cast<QDial*>( widget ) )
     {
         widget->setAttribute( Qt::WA_Hover );

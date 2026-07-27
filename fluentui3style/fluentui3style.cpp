@@ -85,7 +85,7 @@ static constexpr int menuItemHMargin = 3;  // horizontal margin for menu items
 
 static constexpr int cBShadowBorderWidth = 2;
 static constexpr int cBRoundingRadius    = 4;
-static constexpr int cBPopupOffset       = 2;
+static constexpr int cBPopupOffset       = 3;
 static constexpr int cBPopupAnimationDuration = 400;
 static constexpr const char* cBPopupAnimatorProperty = "_q_fluent_combo_popup_animator";
 
@@ -7596,12 +7596,7 @@ void FluentUI3Style::polish( QApplication* app )
 {
     QProxyStyle::polish( app );
 
-    if ( !comboBoxAnimationEffectSaved )
-    {
-        oldComboBoxAnimationEffect = app->isEffectEnabled( Qt::UI_AnimateCombo );
-        comboBoxAnimationEffectSaved = true;
-    }
-    app->setEffectEnabled( Qt::UI_AnimateCombo, false );
+    updateComboBoxAnimationEffect( app );
 }
 
 void FluentUI3Style::polish( QWidget* widget )
@@ -7741,6 +7736,7 @@ void FluentUI3Style::polish( QWidget* widget )
     }
     else if ( QComboBox* cb = qobject_cast<QComboBox*>( widget ) )
     {
+        cb->view()->viewport()->setAutoFillBackground(false);
         if ( cb->isEditable() )
         {
             QLineEdit* le = cb->lineEdit();
@@ -7876,11 +7872,7 @@ void FluentUI3Style::unpolish( QWidget* widget )
         }
     }
 
-    if ( const auto* scrollarea = qobject_cast<QAbstractScrollArea*>( widget ); scrollarea
-#if QT_CONFIG( mdiarea )
-                                                                                && !qobject_cast<QMdiArea*>( widget )
-#endif
-    )
+    if ( const auto* scrollarea = qobject_cast<QAbstractScrollArea*>( widget ); scrollarea && !qobject_cast<QMdiArea*>( widget ) )
     {
         const auto vp                    = scrollarea->viewport();
         const auto wasAutoFillBackground = vp->property( "_q_original_autofill_background" ).toBool();
@@ -7910,6 +7902,37 @@ void FluentUI3Style::unpolish( QApplication* app )
         comboBoxAnimationEffectSaved = false;
     }
     QProxyStyle::unpolish( app );
+}
+
+void FluentUI3Style::updateComboBoxAnimationEffect( QApplication* app )
+{
+    if ( !app )
+    {
+        return;
+    }
+
+    const QVariant globalValue =
+        app->property( ComboBoxPopupAnimationEnabledProperty );
+    const bool customAnimationEnabled =
+        !app->property( "_q_scrollHint_center" ).toBool()
+        && ( !globalValue.isValid() || globalValue.toBool() );
+
+    if ( customAnimationEnabled )
+    {
+        if ( !comboBoxAnimationEffectSaved )
+        {
+            oldComboBoxAnimationEffect =
+                app->isEffectEnabled( Qt::UI_AnimateCombo );
+            comboBoxAnimationEffectSaved = true;
+        }
+        app->setEffectEnabled( Qt::UI_AnimateCombo, false );
+    }
+    else if ( comboBoxAnimationEffectSaved )
+    {
+        app->setEffectEnabled(
+            Qt::UI_AnimateCombo, oldComboBoxAnimationEffect );
+        comboBoxAnimationEffectSaved = false;
+    }
 }
 
 // void FluentUI3Style::unpolish( QWidget* widget )

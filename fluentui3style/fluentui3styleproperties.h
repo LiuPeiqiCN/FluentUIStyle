@@ -37,6 +37,8 @@ enum ProgressBarStyle
 [[maybe_unused]] constexpr const char *SliderValueTipProperty = "showValueTip";
 [[maybe_unused]] constexpr const char *SliderValueTipHooksProperty = "sliderValueTipHooks";
 [[maybe_unused]] constexpr const char *SliderValueTipLabelProperty = "sliderValueTipLabel";
+// 可同时设置在 qApp 和单个 QComboBox 上。qApp 属性是总开关；
+// 全局开启时，单个 QComboBox 可通过局部属性选择是否启用动画。
 [[maybe_unused]] constexpr const char *ComboBoxPopupAnimationEnabledProperty = "comboBoxPopupAnimationEnabled";
 enum DialStyle
 {

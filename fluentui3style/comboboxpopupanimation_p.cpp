@@ -124,17 +124,29 @@ private:
 
 static bool comboBoxPopupAnimationEnabled( const QComboBox* comboBox )
 {
+    if ( qApp->property( "_q_scrollHint_center" ).toBool() )
+    {
+        return false;
+    }
+
+    const QVariant globalValue =
+        qApp->property( ComboBoxPopupAnimationEnabledProperty );
+    if ( globalValue.isValid() && !globalValue.toBool() )
+    {
+        return false;
+    }
+
     if ( comboBox )
     {
-        const QVariant value = comboBox->property( ComboBoxPopupAnimationEnabledProperty );
-        if ( value.isValid() )
+        const QVariant localValue =
+            comboBox->property( ComboBoxPopupAnimationEnabledProperty );
+        if ( localValue.isValid() )
         {
-            return value.toBool();
+            return localValue.toBool();
         }
     }
 
-    const QVariant value = qApp->property( ComboBoxPopupAnimationEnabledProperty );
-    return value.isValid() ? value.toBool() : true;
+    return true;
 }
 
 // 这个辅助对象只监听 QComboBox 创建的弹出窗口，不需要继承 QComboBox，
@@ -169,20 +181,6 @@ public:
     void setPopupOffset( int offset ) { m_popupOffset = qMax( 0, offset ); }
 
     void setShadowBorderWidth( int width ) { m_shadowBorderWidth = qMax( 0, width ); }
-
-    void setEnabled( bool enabled )
-    {
-        if ( !m_comboBox )
-        {
-            return;
-        }
-
-        m_comboBox->setProperty( ComboBoxPopupAnimationEnabledProperty, enabled );
-        if ( !enabled )
-        {
-            stop();
-        }
-    }
 
     void stop()
     {
@@ -287,11 +285,7 @@ protected:
             return QObject::eventFilter( watched, event );
         }
 
-        if ( event->type() == QEvent::Show )
-        {
-            animatePopup( popup );
-        }
-        else if ( event->type() == QEvent::Hide )
+        if ( event->type() == QEvent::Hide )
         {
             // 真实弹窗正常隐藏，使用它的截图播放视觉上的收起动画。
             const bool openingWasInterrupted = m_isOpening;
@@ -783,11 +777,6 @@ ComboBoxPopupAnimator::ComboBoxPopupAnimator( QComboBox* comboBox, QObject* pare
 }
 
 ComboBoxPopupAnimator::~ComboBoxPopupAnimator() = default;
-
-void ComboBoxPopupAnimator::setEnabled( bool enabled )
-{
-    m_impl->setEnabled( enabled );
-}
 
 void ComboBoxPopupAnimator::stop()
 {

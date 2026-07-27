@@ -16,7 +16,6 @@ public:
     explicit ComboBoxPopupAnimator( QComboBox* comboBox, QObject* parent = nullptr );
     ~ComboBoxPopupAnimator() override;
 
-    void setEnabled( bool enabled );
     void stop();
     void setDuration( int duration );
     void setCornerRadius( int radius );

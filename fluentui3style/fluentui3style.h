@@ -71,6 +71,8 @@ public:
     bool eventFilter(QObject *watched, QEvent *event) override;
 
 private:
+    void updateComboBoxAnimationEffect(QApplication *app);
+
     void drawCheckBox(const QStyleOption *option, QPainter *painter, const QWidget *widget) const;
     void drawSwitchButton(const QStyleOption *option, QPainter *painter, const QWidget *widget) const;
     void drawSpecialButton(QPainter *painter, const QStyleOption *option, const QWidget *widget, bool &isReturn) const;

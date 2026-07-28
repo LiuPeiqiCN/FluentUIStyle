@@ -18,16 +18,14 @@ public:
 
     void stop();
     void setDuration( int duration );
-    void setCornerRadius( int radius );
+    void setWinUI3Duration( int duration );
 
-    // popup 与 ComboBox 主体之间的外部间距。启用本动画器后，最终几何
-    // 始终由动画器按展开方向偏移，动画结束后不会恢复到偏移前的位置。
+    // 普通下拉动画中 popup 与 ComboBox 主体之间的外部间距。
+    // WinUI3 中心展开使用 Qt 算出的最终几何，不应用该偏移。
     void setPopupOffset( int offset );
 
-    // 截图代理绘制时排除的 popup 内部阴影区域。
-    void setShadowBorderWidth( int width );
-
     static bool isEnabled( const QComboBox* comboBox );
+    static bool isWinUI3AnimationEnabled( const QComboBox* comboBox );
     static QComboBox* comboBoxForPopup( const QWidget* popup );
 
 private:

@@ -72,6 +72,7 @@ public:
 
 private:
     void updateComboBoxAnimationEffect(QApplication *app);
+    void updateMenuAnimationEffect(QApplication *app);
 
     void drawCheckBox(const QStyleOption *option, QPainter *painter, const QWidget *widget) const;
     void drawSwitchButton(const QStyleOption *option, QPainter *painter, const QWidget *widget) const;
@@ -125,6 +126,8 @@ private:
     mutable int colorSchemeIndex = 0;
     bool comboBoxAnimationEffectSaved = false;
     bool oldComboBoxAnimationEffect = false;
+    bool menuAnimationEffectSaved = false;
+    bool oldMenuAnimationEffect = false;
 };
 
 #endif // FLUENTUI3STYLE_H

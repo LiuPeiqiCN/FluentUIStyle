@@ -3,6 +3,8 @@ QT += svg
 DEFINES += FLUENTUI3STYLE_LIBRARY
 
 HEADERS += \
+    $$PWD/comboboxpopupanimation_p.h \
+    $$PWD/menupopupanimation_p.h \
     $$PWD/fluentui3style.h \
     $$PWD/fluentui3styleproperties.h \
     $$PWD/fluentuiappearance.h \
@@ -14,6 +16,7 @@ HEADERS += \
 
 SOURCES += \
     $$PWD/comboboxpopupanimation_p.cpp \
+    $$PWD/menupopupanimation_p.cpp \
     $$PWD/fluentui3style.cpp \
     $$PWD/fluentuiappearance.cpp \
     $$PWD/palettemanager.cpp \

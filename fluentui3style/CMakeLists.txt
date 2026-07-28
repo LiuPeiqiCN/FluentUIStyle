@@ -3,6 +3,8 @@ set(LIBRARY_SOURCES
     fluentui3styleproperties.h
     comboboxpopupanimation_p.cpp
     comboboxpopupanimation_p.h
+    menupopupanimation_p.cpp
+    menupopupanimation_p.h
     fluentui3style.cpp
     fluentui3style.h
     fluentuiappearance.cpp

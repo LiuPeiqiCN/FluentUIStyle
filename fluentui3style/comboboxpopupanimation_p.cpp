@@ -1,51 +1,34 @@
 #include "comboboxpopupanimation_p.h"
-#include "fluentui3styleproperties.h"
 
 #include <QAbstractItemView>
 #include <QApplication>
 #include <QBoxLayout>
-#include <QBrush>
 #include <QChildEvent>
 #include <QComboBox>
 #include <QEasingCurve>
 #include <QEvent>
 #include <QKeyEvent>
 #include <QPainter>
-#include <QPainterPath>
-#include <QPalette>
 #include <QParallelAnimationGroup>
 #include <QPixmap>
 #include <QPointer>
 #include <QPropertyAnimation>
-#include <QScreen>
+#include <QRegion>
 #include <QVariantAnimation>
 #include <QWidget>
 #include <QtMath>
+
+#include "fluentui3styleproperties.h"
 
 // 收起时显示的临时截图窗口。它不接收输入，也不参与 QComboBox 的状态管理。
 class PopupSnapshotWidget final : public QWidget
 {
 public:
-    PopupSnapshotWidget( QWidget* owner,
-                         const QPixmap& backgroundSnapshot,
-                         const QPixmap& viewSnapshot,
-                         const QPoint& viewPosition,
-                         const QSize& viewSize,
-                         const QBrush& viewBackground,
-                         int cornerRadius,
-                         int shadowBorderWidth,
-                         bool opensAbove )
+    PopupSnapshotWidget( QWidget* owner, const QPixmap& snapshot )
         : QWidget( owner,
                    Qt::Tool | Qt::FramelessWindowHint | Qt::WindowDoesNotAcceptFocus | Qt::WindowTransparentForInput
                        | Qt::NoDropShadowWindowHint )
-        , m_backgroundSnapshot( backgroundSnapshot )
-        , m_viewSnapshot( viewSnapshot )
-        , m_viewPosition( viewPosition )
-        , m_viewSize( viewSize )
-        , m_viewBackground( viewBackground )
-        , m_cornerRadius( cornerRadius )
-        , m_shadowBorderWidth( shadowBorderWidth )
-        , m_opensAbove( opensAbove )
+        , m_snapshot( snapshot )
     {
         setAttribute( Qt::WA_TransparentForMouseEvents );
         setAttribute( Qt::WA_ShowWithoutActivating );
@@ -58,12 +41,9 @@ public:
         update();
     }
 
-    void setViewSnapshot( const QPixmap& viewSnapshot, const QPoint& viewPosition, const QSize& viewSize, const QBrush& viewBackground )
+    void setSnapshot( const QPixmap& snapshot )
     {
-        m_viewSnapshot   = viewSnapshot;
-        m_viewPosition   = viewPosition;
-        m_viewSize       = viewSize;
-        m_viewBackground = viewBackground;
+        m_snapshot = snapshot;
         update();
     }
 
@@ -71,66 +51,27 @@ protected:
     void paintEvent( QPaintEvent* ) override
     {
         QPainter painter( this );
-        painter.setRenderHint( QPainter::Antialiasing );
-
-        const qreal radius = qMin<qreal>( m_cornerRadius, height() / 2.0 );
-        QPainterPath clipPath;
-        clipPath.addRoundedRect( QRectF( rect() ).adjusted( 0.5, 0.5, -0.5, -0.5 ), radius, radius );
-        painter.setClipPath( clipPath );
-
-        const QRectF contentRect =
-            QRectF( rect() ).adjusted(
-                m_shadowBorderWidth,
-                m_opensAbove ? m_shadowBorderWidth : 0,
-                -m_shadowBorderWidth,
-                m_opensAbove ? 0 : -m_shadowBorderWidth );
-        const qreal contentRadius =
-            qMin<qreal>( m_cornerRadius, contentRect.height() / 2.0 );
-        QPainterPath contentClip;
-        contentClip.addRoundedRect( contentRect, contentRadius, contentRadius );
-
-        painter.drawPixmap( 0, 0, m_backgroundSnapshot );
-
-        // 一些样式把弹窗容器设为透明，真正的不透明背景由 view 绘制。
-        // view 移走后只在容器实际面板区域内补上底色。
-        if ( !m_viewSize.isEmpty() )
-        {
-            painter.save();
-            painter.setClipPath( contentClip, Qt::IntersectClip );
-            painter.fillRect( QRect( m_viewPosition, m_viewSize ), m_viewBackground );
-            painter.restore();
-        }
-
-        if ( !m_viewSnapshot.isNull() )
-        {
-            painter.save();
-            painter.setClipPath( contentClip, Qt::IntersectClip );
-            painter.drawPixmap( m_viewPosition.x(), m_viewPosition.y() + m_contentOffsetY, m_viewSnapshot );
-            painter.restore();
-        }
+        painter.setCompositionMode( QPainter::CompositionMode_Source );
+        painter.fillRect( rect(), Qt::transparent );
+        painter.setCompositionMode( QPainter::CompositionMode_SourceOver );
+        painter.drawPixmap( 0, m_contentOffsetY, m_snapshot );
     }
 
 private:
-    QPixmap m_backgroundSnapshot;
-    QPixmap m_viewSnapshot;
-    QPoint m_viewPosition;
-    QSize m_viewSize;
-    QBrush m_viewBackground;
-    int m_cornerRadius      = 4;
-    int m_shadowBorderWidth = 2;
-    int m_contentOffsetY    = 0;
-    bool m_opensAbove       = false;
+    QPixmap m_snapshot;
+    int m_contentOffsetY = 0;
 };
 
-static bool comboBoxPopupAnimationEnabled( const QComboBox* comboBox )
+enum class ComboBoxPopupAnimationMode
 {
-    if ( qApp->property( "_q_scrollHint_center" ).toBool() )
-    {
-        return false;
-    }
+    Disabled,
+    DropDown,
+    WinUI3
+};
 
-    const QVariant globalValue =
-        qApp->property( ComboBoxPopupAnimationEnabledProperty );
+static bool comboBoxAnimationPropertyEnabled( const QComboBox* comboBox, const char* propertyName, bool defaultEnabled )
+{
+    const QVariant globalValue = qApp->property( propertyName );
     if ( globalValue.isValid() && !globalValue.toBool() )
     {
         return false;
@@ -138,15 +79,37 @@ static bool comboBoxPopupAnimationEnabled( const QComboBox* comboBox )
 
     if ( comboBox )
     {
-        const QVariant localValue =
-            comboBox->property( ComboBoxPopupAnimationEnabledProperty );
+        const QVariant localValue = comboBox->property( propertyName );
         if ( localValue.isValid() )
         {
             return localValue.toBool();
         }
     }
 
-    return true;
+    return globalValue.isValid() ? globalValue.toBool() : defaultEnabled;
+}
+
+static ComboBoxPopupAnimationMode comboBoxPopupAnimationMode( const QComboBox* comboBox )
+{
+    // 该 Qt 私有属性只选择 Qt 自己的 popup 行为；开启时不叠加任何
+    // FluentUI3Style 自定义动画。
+    if ( qApp->property( "_q_scrollHint_center" ).toBool() )
+    {
+        return ComboBoxPopupAnimationMode::Disabled;
+    }
+
+    if ( comboBox && !comboBox->isEditable()
+         && comboBoxAnimationPropertyEnabled( comboBox, ComboBoxPopupWinUI3AnimationEnabledProperty, false ) )
+    {
+        return ComboBoxPopupAnimationMode::WinUI3;
+    }
+
+    if ( comboBoxAnimationPropertyEnabled( comboBox, ComboBoxPopupDropDownAnimationEnabledProperty, true ) )
+    {
+        return ComboBoxPopupAnimationMode::DropDown;
+    }
+
+    return ComboBoxPopupAnimationMode::Disabled;
 }
 
 // 这个辅助对象只监听 QComboBox 创建的弹出窗口，不需要继承 QComboBox，
@@ -160,8 +123,7 @@ public:
     {
         comboBox->installEventFilter( this );
 
-        const auto children = comboBox->findChildren<QWidget*>(
-            QString(), Qt::FindDirectChildrenOnly );
+        const auto children = comboBox->findChildren<QWidget*>( QString(), Qt::FindDirectChildrenOnly );
         for ( QWidget* child : children )
         {
             attachPopup( child );
@@ -176,11 +138,9 @@ public:
 
     void setDuration( int duration ) { m_duration = duration; }
 
-    void setCornerRadius( int radius ) { m_cornerRadius = qMax( 0, radius ); }
+    void setWinUI3Duration( int duration ) { m_winUI3Duration = duration; }
 
     void setPopupOffset( int offset ) { m_popupOffset = qMax( 0, offset ); }
-
-    void setShadowBorderWidth( int width ) { m_shadowBorderWidth = qMax( 0, width ); }
 
     void stop()
     {
@@ -189,6 +149,7 @@ public:
             stopAnimation( m_popup );
         }
         stopCloseSnapshot();
+        m_activeMode = ComboBoxPopupAnimationMode::Disabled;
         removeApplicationEventFilter();
     }
 
@@ -220,25 +181,44 @@ protected:
 
         if ( watched == m_popup && event->type() == QEvent::Show )
         {
-            if ( comboBoxPopupAnimationEnabled( m_comboBox ) )
+            // 同一个过滤器同时安装在 qApp 和 popup 上时，同一个事件会
+            // 进入两次。每次显示周期只处理第一个 Show/Hide。
+            if ( m_popupShown )
             {
-                animatePopup( m_popup );
-                installApplicationEventFilter();
+                return QObject::eventFilter( watched, event );
+            }
+            m_popupShown = true;
+
+            const ComboBoxPopupAnimationMode mode = comboBoxPopupAnimationMode( m_comboBox );
+            if ( mode != ComboBoxPopupAnimationMode::Disabled )
+            {
+                animatePopup( m_popup, mode );
             }
             return QObject::eventFilter( watched, event );
         }
 
-        if ( !comboBoxPopupAnimationEnabled( m_comboBox ) )
+        const bool popupHideEvent = watched == m_popup && event->type() == QEvent::Hide;
+        if ( popupHideEvent )
+        {
+            if ( !m_popupShown )
+            {
+                return QObject::eventFilter( watched, event );
+            }
+            m_popupShown = false;
+        }
+
+        if ( comboBoxPopupAnimationMode( m_comboBox ) == ComboBoxPopupAnimationMode::Disabled )
         {
             stopAnimation( m_popup );
             stopCloseSnapshot();
+            m_activeMode = ComboBoxPopupAnimationMode::Disabled;
             removeApplicationEventFilter();
             return QObject::eventFilter( watched, event );
         }
 
         QWidget* popup = m_popup;
 
-        // 展开完成前吞掉后续输入，避免弹窗尚未准备好截图就关闭。
+        // 展开完成前吞掉后续输入，避免动画几何尚未恢复时关闭或选中。
         if ( m_isOpening )
         {
             switch ( event->type() )
@@ -264,7 +244,7 @@ protected:
 
         // 展开完成后，只在可能触发关闭的输入到来时更新截图。
         // 这样既能得到最新的悬停/滚动状态，也不需要监听每一帧 Paint。
-        if ( popup->isVisible() && !m_isOpening )
+        if ( m_activeMode == ComboBoxPopupAnimationMode::DropDown && popup->isVisible() && !m_isOpening )
         {
             bool shouldRefresh = event->type() == QEvent::MouseButtonPress;
 
@@ -285,17 +265,20 @@ protected:
             return QObject::eventFilter( watched, event );
         }
 
-        if ( event->type() == QEvent::Hide )
+        if ( popupHideEvent )
         {
-            // 真实弹窗正常隐藏，使用它的截图播放视觉上的收起动画。
-            const bool openingWasInterrupted = m_isOpening;
+            const ComboBoxPopupAnimationMode activeMode = m_activeMode;
+            const bool openingWasInterrupted            = m_isOpening;
             stopAnimation( popup );
-            if ( openingWasInterrupted )
+            m_activeMode = ComboBoxPopupAnimationMode::Disabled;
+
+            if ( activeMode != ComboBoxPopupAnimationMode::DropDown || openingWasInterrupted )
             {
                 stopCloseSnapshot();
             }
             else
             {
+                // 普通下拉模式使用真实弹窗的截图播放视觉上的收起动画。
                 animateCloseSnapshot( popup );
             }
             restoreHeightConstraints( popup );
@@ -307,9 +290,7 @@ protected:
 private:
     void attachPopup( QWidget* popup )
     {
-        if ( !popup
-             || !popup->inherits( "QComboBoxPrivateContainer" )
-             || ComboBoxPopupAnimator::comboBoxForPopup( popup ) != m_comboBox
+        if ( !popup || !popup->inherits( "QComboBoxPrivateContainer" ) || ComboBoxPopupAnimator::comboBoxForPopup( popup ) != m_comboBox
              || m_popup == popup )
         {
             return;
@@ -319,7 +300,8 @@ private:
         {
             m_popup->removeEventFilter( this );
         }
-        m_popup = popup;
+        m_popup      = popup;
+        m_popupShown = popup->isVisible();
         m_popup->installEventFilter( this );
     }
 
@@ -341,21 +323,45 @@ private:
         }
     }
 
-    void animatePopup( QWidget* popup )
+    bool animatePopup( QWidget* popup, ComboBoxPopupAnimationMode mode )
     {
         stopCloseSnapshot();
         stopAnimation( popup );
 
-        auto* popupView   = m_comboBox->view();
-        auto* popupLayout = popup->layout();
-        auto* popupBoxLayout = qobject_cast<QBoxLayout*>( popupLayout );
+        const bool started = mode == ComboBoxPopupAnimationMode::WinUI3 ? beginWinUI3PopupAnimation( popup )
+                                                                        : beginDropDownPopupAnimation( popup );
+        if ( !started )
+        {
+            m_activeMode = ComboBoxPopupAnimationMode::Disabled;
+            return false;
+        }
+
+        installApplicationEventFilter();
+
+        if ( mode == ComboBoxPopupAnimationMode::WinUI3 )
+        {
+            animateWinUI3Popup( popup );
+        }
+        else
+        {
+            animateDropDownPopup( popup );
+        }
+        return true;
+    }
+
+    bool beginDropDownPopupAnimation( QWidget* popup )
+    {
+        auto* popupView           = m_comboBox->view();
+        auto* popupLayout         = popup->layout();
+        auto* popupBoxLayout      = qobject_cast<QBoxLayout*>( popupLayout );
         const int viewLayoutIndex = popupLayout ? popupLayout->indexOf( popupView ) : -1;
         if ( !popupView || !popupBoxLayout || viewLayoutIndex < 0 )
         {
-            return;
+            return false;
         }
 
         m_isOpening              = true;
+        m_activeMode             = ComboBoxPopupAnimationMode::DropDown;
         m_finalGeometry          = popup->geometry();
         m_originalMinimumHeight  = popup->minimumHeight();
         m_originalMaximumHeight  = popup->maximumHeight();
@@ -367,17 +373,35 @@ private:
         popup->setProperty( ComboBoxPopupOpensAboveProperty, m_opensAbove );
         popup->update();
 
-        m_popupLayout        = popupLayout;
-        m_viewLayoutIndex    = viewLayoutIndex;
-        m_finalViewPosition  = popupView->pos();
-
-        const QPoint snapshotViewPosition = popupView->mapTo( popup, QPoint( 0, 0 ) );
-        const QPixmap fullSnapshot = popup->grab();
-        const QPixmap viewSnapshot = copyFromSnapshot( fullSnapshot, QRect( snapshotViewPosition, popupView->size() ) );
+        m_popupLayout       = popupLayout;
+        m_viewLayoutIndex   = viewLayoutIndex;
+        m_finalViewPosition = popupView->pos();
 
         popupLayout->removeWidget( popupView );
         m_viewDetached = true;
+        return true;
+    }
 
+    bool beginWinUI3PopupAnimation( QWidget* popup )
+    {
+        if ( !popup || !m_comboBox || popup->height() <= 0 )
+        {
+            return false;
+        }
+
+        m_isOpening     = true;
+        m_activeMode    = ComboBoxPopupAnimationMode::WinUI3;
+        m_finalGeometry = popup->geometry();
+
+        const QPoint comboCenter = m_comboBox->mapToGlobal( m_comboBox->rect().center() );
+        m_opensAbove             = m_finalGeometry.center().y() < comboCenter.y();
+        popup->setProperty( ComboBoxPopupOpensAboveProperty, m_opensAbove );
+        return true;
+    }
+
+    void animateDropDownPopup( QWidget* popup )
+    {
+        auto* popupView          = m_comboBox->view();
         QPoint startViewPosition = m_finalViewPosition;
         if ( m_opensAbove )
         {
@@ -390,28 +414,10 @@ private:
             startViewPosition.ry() -= popupView->height();
         }
 
-        // 单独截取没有 view 的容器背景。收起时背景保持不动，
-        // 只有 view 的截图移动，避免移走后露出透明区域。
-        popupView->move( m_finalViewPosition.x(), -popupView->height() - 1 );
-        const QPixmap backgroundSnapshot = popup->grab();
-        prepareCloseSnapshot( popup,
-                              backgroundSnapshot,
-                              viewSnapshot,
-                              snapshotViewPosition,
-                              popupView->size(),
-                              popupView->viewport()->palette().brush( QPalette::Base ) );
-        if ( !m_isOpening || !popup->isVisible() )
-        {
-            stopAnimation( popup );
-            return;
-        }
-
         popup->setFixedHeight( 1 );
         if ( m_opensAbove )
         {
-            popup->move(
-                m_finalGeometry.x(),
-                m_finalGeometry.bottom() );
+            popup->move( m_finalGeometry.x(), m_finalGeometry.bottom() );
         }
         else
         {
@@ -437,9 +443,7 @@ private:
 
                      if ( m_opensAbove )
                      {
-                         popup->move(
-                             m_finalGeometry.x(),
-                             m_finalGeometry.bottom() - height + 1 );
+                         popup->move( m_finalGeometry.x(), m_finalGeometry.bottom() - height + 1 );
                      }
                      else
                      {
@@ -462,6 +466,7 @@ private:
                  [ this, popup ]
                  {
                      restorePopup( popup );
+                     restoreHeightConstraints( popup );
                      m_animationGroup = nullptr;
                      m_isOpening      = false;
                      refreshCloseSnapshot( popup );
@@ -470,9 +475,99 @@ private:
         m_animationGroup->start( QAbstractAnimation::DeleteWhenStopped );
     }
 
+    void animateWinUI3Popup( QWidget* popup )
+    {
+        const qreal openedLength     = popup->height();
+        const int comboCenterY       = m_comboBox->mapToGlobal( m_comboBox->rect().center() ).y();
+        const qreal clipCenterY      = comboCenterY - m_finalGeometry.top();
+        const qreal offsetFromCenter = clipCenterY - openedLength / 2.0;
+
+        // WinUI SplitOpenThemeAnimation 没有显式设置 ClosedLength，
+        // 因而从 OpenedLength 的 50% 开始。若锚点靠近边缘，则放大
+        // 初始 Clip，避免裁剪矩形有一部分落在 Popup 外。
+        constexpr qreal closedRatio = 0.5;
+        qreal initialClipScaleY     = closedRatio;
+        const qreal maxOffset       = openedLength * ( 1.0 - closedRatio ) / 2.0;
+        if ( qAbs( offsetFromCenter ) > maxOffset )
+        {
+            const qreal clipLength = openedLength * closedRatio;
+            const qreal pixelsOff  = clipLength / 2.0 - ( openedLength / 2.0 - qAbs( offsetFromCenter ) );
+            initialClipScaleY      = pixelsOff / openedLength * 2.0 + closedRatio;
+        }
+
+        const qreal finalClipScaleY = ( 0.5 + qAbs( offsetFromCenter / openedLength ) ) * 2.0;
+        QPointer<QWidget> popupView = m_comboBox->view();
+        QPointer<QWidget> popupViewport =
+            popupView ? m_comboBox->view()->viewport() : nullptr;
+
+        const auto applyClip =
+            [ popup, popupView, popupViewport, clipCenterY, openedLength ]( qreal scaleY )
+        {
+            const int clipHeight = qMax( 1, qRound( openedLength * scaleY ) );
+            const int clipTop    = qRound( clipCenterY - clipHeight / 2.0 );
+            const QRect clipRect = QRect( 0, clipTop, popup->width(), clipHeight ).intersected( popup->rect() );
+            popup->setMask( QRegion( clipRect ) );
+
+            // setMask() 只改变窗口可见区域，Qt 不一定会重绘新暴露的
+            // backing-store 像素。主题切换后必须同步刷新这些区域。
+            popup->repaint( clipRect );
+            if ( popupView )
+            {
+                popupView->repaint();
+            }
+            if ( popupViewport )
+            {
+                popupViewport->repaint();
+            }
+        };
+
+        applyClip( initialClipScaleY );
+
+        m_animationGroup = new QParallelAnimationGroup( popup );
+
+        auto* splitAnimation = new QVariantAnimation( m_animationGroup );
+        splitAnimation->setStartValue( initialClipScaleY );
+        splitAnimation->setEndValue( finalClipScaleY );
+        splitAnimation->setDuration( m_winUI3Duration );
+
+        QEasingCurve splitOpenEasing( QEasingCurve::BezierSpline );
+        splitOpenEasing.addCubicBezierSegment( QPointF( 0.0, 0.0 ), QPointF( 0.0, 1.0 ), QPointF( 1.0, 1.0 ) );
+        splitAnimation->setEasingCurve( splitOpenEasing );
+
+        connect( splitAnimation,
+                 &QVariantAnimation::valueChanged,
+                 this,
+                 [ applyClip ]( const QVariant& value ) { applyClip( value.toReal() ); } );
+
+        m_animationGroup->addAnimation( splitAnimation );
+
+        connect( m_animationGroup,
+                 &QParallelAnimationGroup::finished,
+                 this,
+                 [ this, popup, popupView, popupViewport ]
+                 {
+                     popup->clearMask();
+                     popup->repaint();
+                     if ( popupView )
+                     {
+                         popupView->repaint();
+                     }
+                     if ( popupViewport )
+                     {
+                         popupViewport->repaint();
+                     }
+                     m_animationGroup = nullptr;
+                     m_isOpening      = false;
+                     removeApplicationEventFilter();
+                 } );
+
+        m_animationGroup->start( QAbstractAnimation::DeleteWhenStopped );
+    }
+
     void stopAnimation( QWidget* popup )
     {
-        const bool hadAnimation = m_animationGroup;
+        const bool hadAnimation                     = m_animationGroup;
+        const ComboBoxPopupAnimationMode activeMode = m_activeMode;
 
         if ( m_animationGroup )
         {
@@ -482,10 +577,16 @@ private:
         }
 
         m_isOpening = false;
-        if ( hadAnimation || m_viewDetached )
+        if ( activeMode == ComboBoxPopupAnimationMode::WinUI3 )
+        {
+            popup->clearMask();
+            popup->update();
+        }
+        else if ( hadAnimation || m_viewDetached )
         {
             restorePopup( popup );
         }
+        restoreHeightConstraints( popup );
     }
 
     void restorePopup( QWidget* popup )
@@ -527,47 +628,33 @@ private:
         m_heightConstraintsSaved = false;
     }
 
-    static QPixmap copyFromSnapshot( const QPixmap& snapshot, const QRect& logicalRect )
-    {
-        if ( snapshot.isNull() || !logicalRect.isValid() )
-        {
-            return {};
-        }
-
-        const qreal ratio = snapshot.devicePixelRatio();
-        const int left    = qFloor( logicalRect.left() * ratio );
-        const int top     = qFloor( logicalRect.top() * ratio );
-        const int right   = qCeil( ( logicalRect.left() + logicalRect.width() ) * ratio );
-        const int bottom  = qCeil( ( logicalRect.top() + logicalRect.height() ) * ratio );
-        const QRect pixelRect( left, top, right - left, bottom - top );
-
-        QPixmap result = snapshot.copy( pixelRect.intersected( QRect( QPoint( 0, 0 ), snapshot.size() ) ) );
-        result.setDevicePixelRatio( ratio );
-        return result;
-    }
-
     void refreshCloseSnapshot( QWidget* popup )
     {
-        if ( !m_snapshotWidget || !m_comboBox || !popup->isVisible() )
+        if ( !m_comboBox || !popup->isVisible() )
         {
             return;
         }
 
-        auto* popupView            = m_comboBox->view();
-        const QPoint viewPosition  = popupView->mapTo( popup, QPoint( 0, 0 ) );
-        const QPixmap fullSnapshot = popup->grab();
-        if ( fullSnapshot.isNull() )
+        const QPixmap snapshot = popup->grab();
+        if ( snapshot.isNull() )
         {
             return;
         }
 
-        const QPixmap viewSnapshot = copyFromSnapshot( fullSnapshot, QRect( viewPosition, popupView->size() ) );
+        if ( !m_snapshotWidget )
+        {
+            prepareCloseSnapshot( popup, snapshot );
+            return;
+        }
 
-        m_snapshotWidget->setViewSnapshot(
-            viewSnapshot, viewPosition, popupView->size(), popupView->viewport()->palette().brush( QPalette::Base ) );
-        m_closeViewHeight   = popupView->height();
-        m_closeViewPosition = viewPosition;
+        const qreal ratio     = snapshot.devicePixelRatio();
+        m_snapshotLogicalSize = QSize( qCeil( snapshot.width() / ratio ), qCeil( snapshot.height() / ratio ) );
+        m_snapshotWidget->setSnapshot( snapshot );
         updateCloseGeometry( popup );
+        if ( m_snapshotWidget->geometry() != m_closeStartGeometry )
+        {
+            m_snapshotWidget->setGeometry( m_closeStartGeometry );
+        }
     }
 
     void updateCloseGeometry( QWidget* popup )
@@ -582,73 +669,22 @@ private:
         }
     }
 
-    void moveSnapshotOffscreen()
+    void prepareCloseSnapshot( QWidget* popup, const QPixmap& snapshot )
     {
-        if ( !m_snapshotWidget )
-        {
-            removeApplicationEventFilter();
-            return;
-        }
-
-        QRect virtualGeometry;
-        const auto screens = QGuiApplication::screens();
-        for ( QScreen* screen : screens )
-        {
-            virtualGeometry = virtualGeometry.united( screen->virtualGeometry() );
-        }
-
-        QRect offscreenGeometry = m_closeStartGeometry;
-        if ( virtualGeometry.isValid() )
-        {
-            offscreenGeometry.moveTopLeft(
-                QPoint( virtualGeometry.right() + offscreenGeometry.width() + 100,
-                        virtualGeometry.bottom() + offscreenGeometry.height() + 100 ) );
-        }
-        else
-        {
-            offscreenGeometry.moveTopLeft( QPoint( 100000, 100000 ) );
-        }
-
-        m_snapshotWidget->setGeometry( offscreenGeometry );
-    }
-
-    void prepareCloseSnapshot( QWidget* popup,
-                               const QPixmap& backgroundSnapshot,
-                               const QPixmap& viewSnapshot,
-                               const QPoint& viewPosition,
-                               const QSize& viewSize,
-                               const QBrush& viewBackground )
-    {
-        if ( !m_comboBox || !popup || !popup->isVisible() )
+        if ( !m_comboBox || !popup || !popup->isVisible() || snapshot.isNull() )
         {
             return;
         }
 
-        stopCloseSnapshot();
-
-        if ( backgroundSnapshot.isNull() )
-        {
-            return;
-        }
-
-        const qreal ratio     = backgroundSnapshot.devicePixelRatio();
-        m_snapshotLogicalSize = QSize( qCeil( backgroundSnapshot.width() / ratio ), qCeil( backgroundSnapshot.height() / ratio ) );
+        const qreal ratio     = snapshot.devicePixelRatio();
+        m_snapshotLogicalSize = QSize( qCeil( snapshot.width() / ratio ), qCeil( snapshot.height() / ratio ) );
         updateCloseGeometry( popup );
 
-        m_snapshotWidget = new PopupSnapshotWidget(
-            m_comboBox->window(),
-            backgroundSnapshot,
-            viewSnapshot,
-            viewPosition,
-            viewSize,
-            viewBackground,
-            m_cornerRadius,
-            m_shadowBorderWidth,
-            m_opensAbove );
-        m_closeViewHeight   = viewSize.height();
-        m_closeViewPosition = viewPosition;
-        moveSnapshotOffscreen();
-        m_snapshotWidget->setWindowOpacity( 1.0 );
+        m_snapshotWidget = new PopupSnapshotWidget( m_comboBox->window(), snapshot );
+        // 在目标屏幕原位创建原生窗口，避免从虚拟桌面外移回时因屏幕
+        // DPI 不同而被 QWindowsWindow 再次缩放。0 透明度下不会遮挡 popup。
+        m_snapshotWidget->setGeometry( m_closeStartGeometry );
+        m_snapshotWidget->setWindowOpacity( 0.0 );
         m_snapshotWidget->show();
     }
 
@@ -662,9 +698,11 @@ private:
 
         if ( !m_snapshotWidget )
         {
+            stopCloseSnapshot();
             return;
         }
 
+        updateCloseGeometry( popup );
         const QRect startGeometry = m_closeStartGeometry;
         const int fullHeight      = startGeometry.height();
         if ( fullHeight <= 1 )
@@ -676,7 +714,10 @@ private:
         const QPoint comboCenter = m_comboBox->mapToGlobal( m_comboBox->rect().center() );
         const bool opensAbove    = startGeometry.center().y() < comboCenter.y();
 
-        m_snapshotWidget->setGeometry( startGeometry );
+        if ( m_snapshotWidget->geometry() != startGeometry )
+        {
+            m_snapshotWidget->setGeometry( startGeometry );
+        }
         m_snapshotWidget->setContentOffset( 0 );
         m_snapshotWidget->setWindowOpacity( 1.0 );
         m_snapshotWidget->raise();
@@ -697,22 +738,8 @@ private:
                          return;
                      }
 
-                     const qreal progress = value.toReal();
-                     const int height = qMax( 1, qRound( fullHeight - ( fullHeight - 1 ) * progress ) );
-
-                     QRect geometry = startGeometry;
-                     geometry.setHeight( height );
-
-                     if ( opensAbove )
-                     {
-                         geometry.moveBottom( startGeometry.bottom() );
-                     }
-
-                     m_snapshotWidget->setGeometry( geometry );
-
-                     // 模拟真实 view 离开容器：下方弹窗向上移，
-                     // 上方弹窗主要依靠父容器下移，只补偿到折叠底边。
-                     const int targetOffset = opensAbove ? qMax( 0, 1 - m_closeViewPosition.y() ) : -m_closeViewHeight;
+                     const qreal progress   = value.toReal();
+                     const int targetOffset = opensAbove ? fullHeight : -fullHeight;
                      const int offset       = qRound( targetOffset * progress );
                      m_snapshotWidget->setContentOffset( offset );
                  } );
@@ -737,6 +764,7 @@ private:
             m_snapshotWidget->deleteLater();
             m_snapshotWidget = nullptr;
         }
+        m_snapshotLogicalSize = QSize();
 
         if ( !m_isOpening )
         {
@@ -754,20 +782,19 @@ private:
     QRect m_closeStartGeometry;
     QSize m_snapshotLogicalSize;
     QPoint m_finalViewPosition;
-    QPoint m_closeViewPosition;
-    int m_viewLayoutIndex           = -1;
-    int m_closeViewHeight           = 0;
-    int m_cornerRadius              = 4;
-    int m_popupOffset               = 2;
-    int m_shadowBorderWidth         = 2;
-    int m_originalMinimumHeight     = 0;
-    int m_originalMaximumHeight     = QWIDGETSIZE_MAX;
-    bool m_heightConstraintsSaved   = false;
-    bool m_isOpening                = false;
-    bool m_viewDetached             = false;
-    bool m_opensAbove               = false;
-    bool m_applicationFilterInstalled = false;
-    int m_duration                  = 400;
+    int m_viewLayoutIndex                   = -1;
+    int m_popupOffset                       = 2;
+    int m_originalMinimumHeight             = 0;
+    int m_originalMaximumHeight             = QWIDGETSIZE_MAX;
+    bool m_heightConstraintsSaved           = false;
+    bool m_isOpening                        = false;
+    bool m_viewDetached                     = false;
+    bool m_opensAbove                       = false;
+    bool m_popupShown                       = false;
+    bool m_applicationFilterInstalled       = false;
+    ComboBoxPopupAnimationMode m_activeMode = ComboBoxPopupAnimationMode::Disabled;
+    int m_duration                          = 400;
+    int m_winUI3Duration                    = 250;
 };
 
 ComboBoxPopupAnimator::ComboBoxPopupAnimator( QComboBox* comboBox, QObject* parent )
@@ -788,9 +815,9 @@ void ComboBoxPopupAnimator::setDuration( int duration )
     m_impl->setDuration( qMax( 0, duration ) );
 }
 
-void ComboBoxPopupAnimator::setCornerRadius( int radius )
+void ComboBoxPopupAnimator::setWinUI3Duration( int duration )
 {
-    m_impl->setCornerRadius( radius );
+    m_impl->setWinUI3Duration( qMax( 0, duration ) );
 }
 
 void ComboBoxPopupAnimator::setPopupOffset( int offset )
@@ -798,14 +825,14 @@ void ComboBoxPopupAnimator::setPopupOffset( int offset )
     m_impl->setPopupOffset( offset );
 }
 
-void ComboBoxPopupAnimator::setShadowBorderWidth( int width )
-{
-    m_impl->setShadowBorderWidth( width );
-}
-
 bool ComboBoxPopupAnimator::isEnabled( const QComboBox* comboBox )
 {
-    return comboBoxPopupAnimationEnabled( comboBox );
+    return comboBoxPopupAnimationMode( comboBox ) != ComboBoxPopupAnimationMode::Disabled;
+}
+
+bool ComboBoxPopupAnimator::isWinUI3AnimationEnabled( const QComboBox* comboBox )
+{
+    return comboBoxPopupAnimationMode( comboBox ) == ComboBoxPopupAnimationMode::WinUI3;
 }
 
 QComboBox* ComboBoxPopupAnimator::comboBoxForPopup( const QWidget* popup )

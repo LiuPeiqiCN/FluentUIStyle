@@ -202,34 +202,6 @@ static QMap<QMenu *, QString> g_menuIconMap;
 // Helper Classes
 //=============================================================================
 
-// Menu position adjustment filter
-class MenuOffsetFilter : public QObject
-{
-public:
-    explicit MenuOffsetFilter(QObject *parent = nullptr)
-        : QObject(parent)
-    {
-    }
-
-protected:
-    bool eventFilter(QObject *obj, QEvent *event) override
-    {
-        if (event->type() == QEvent::Show)
-        {
-            if (QMenu *menu = qobject_cast<QMenu *>(obj))
-            {
-                QWidget *menuParent = menu->parentWidget();
-                if (menuParent && menuParent->inherits("QMenuBar"))
-                {
-                    QPoint pos = menu->pos();
-                    menu->move(pos + QPoint(2, 0));
-                }
-            }
-        }
-        return QObject::eventFilter(obj, event);
-    }
-};
-
 //=============================================================================
 // MinGW Context Menu Hooks
 //=============================================================================
@@ -360,9 +332,6 @@ MainWindow::MainWindow(QWidget *parent)
 
     setWindowTitle(tr("FluentUI Demo - QStyle [%1 | %2 | Qt %3]")
                        .arg(buildConfigurationName(), targetArchitectureName(), QT_VERSION_STR));
-
-    // Install menu offset filter
-    qApp->installEventFilter(new MenuOffsetFilter(qApp));
 
     // Initialize widgets with fluent border style
     initializeFluentBorderWidgets();
@@ -524,7 +493,7 @@ void MainWindow::setupComboBox()
 
     QStyleOptionComboBox option;
     option.editable = false;
-    if (style()->styleHint(QStyle::SH_ComboBox_Popup, &option, nullptr) > 0)
+    if (style()->styleHint(QStyle::SH_ComboBox_Popup, &option, ui->comboBox) > 0)
     {
         ui->comboBox->setView(new QListView());
     }

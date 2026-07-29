@@ -7,6 +7,8 @@ set(EXWIDGETS_SOURCES
     excolorpicker.h
     excolorpickerbutton.cpp
     excolorpickerbutton.h
+    excombobox.cpp
+    excombobox.h
     exmessagebox.cpp
     exmessagebox.h
     exspectrumwidget.cpp

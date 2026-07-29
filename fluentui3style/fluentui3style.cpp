@@ -87,8 +87,6 @@ static constexpr int menuItemHMargin = 3;  // horizontal margin for menu items
 static constexpr int cBShadowBorderWidth               = 2;
 static constexpr int cBRoundingRadius                  = 4;
 static constexpr int cBPopupOffset                     = 3;
-static constexpr int cBPopupAnimationDuration          = 300;
-static constexpr int cBPopupWinUI3AnimationDuration    = 250;
 static constexpr const char* cBPopupAnimatorProperty   = "_q_fluent_combo_popup_animator";
 static constexpr int menuPopupAnimationDuration        = 400;
 static constexpr const char* menuPopupAnimatorProperty = "_q_fluent_menu_popup_animator";
@@ -98,7 +96,7 @@ static QMarginsF comboBoxPopupPanelMargins( const QWidget* popup )
     const QMarginsF shadowMargins( cBShadowBorderWidth, cBShadowBorderWidth, cBShadowBorderWidth, cBShadowBorderWidth );
 
     QComboBox* comboBox = ComboBoxPopupAnimator::comboBoxForPopup( popup );
-    if ( !comboBox || !ComboBoxPopupAnimator::isEnabled( comboBox ) || ComboBoxPopupAnimator::isWinUI3AnimationEnabled( comboBox ) )
+    if ( !comboBox || !ComboBoxPopupAnimator::isEnabled( comboBox ) )
     {
         return shadowMargins;
     }
@@ -1747,13 +1745,17 @@ void FluentUI3Style::drawComplexControl( ComplexControl control,
             if ( doTransition && ( state & State_Enabled ) )
             {
                 QNumberStyleAnimation* t = new QNumberStyleAnimation( obj );
-                // t->setEasingCurve( QEasingCurve::InOutSine );
                 qreal start = ( state & State_On ) ? 0 : 180;
                 qreal end   = ( state & State_On ) ? 180.0 : 0.0;
                 t->setStartValue( start );
                 t->setEndValue( end );
                 t->setFrameRate( QStyleAnimation::DefaultFps );
                 t->setDuration( 300 );
+                //普通QComboBox没有收起动画，这里让收起动画快一点
+                if (!widget->inherits("ExComboBox") && !(state & State_On) && (oldState & State_On))
+                {
+                    t->setDuration( 180 );
+                }
                 startAnimation( t );
             }
         }
@@ -6502,7 +6504,10 @@ void FluentUI3Style::drawControl( ControlElement element, const QStyleOption* op
                 {  // draw sub menu arrow
                     int fontSize = menuitem->font.pointSize();
                     QFont f( assetFont );
-                    f.setPointSize( qRound( fontSize * 0.9f ) );  // a little bit smaller
+                    if (fontSize > 0)
+                    {
+                        f.setPointSize( qRound( fontSize * 0.9f ) );  // a little bit smaller
+                    }
                     painter->setFont( f );
                     int yOfs = qRound( fontSize / 3.0f );  // an offset to align the '>' with
                                                            // the baseline of the text
@@ -7024,11 +7029,6 @@ int FluentUI3Style::styleHint( StyleHint hint, const QStyleOption* opt, const QW
                     return !cmb->editable;
                 }
 
-                if ( const auto* comboBox = qobject_cast<const QComboBox*>( widget );
-                     comboBox && ComboBoxPopupAnimator::isWinUI3AnimationEnabled( comboBox ) )
-                {
-                    return !cmb->editable;
-                }
             }
             return 0;
         }
@@ -7040,43 +7040,7 @@ int FluentUI3Style::styleHint( StyleHint hint, const QStyleOption* opt, const QW
 
 static bool isComboBoxPopup( QWidget* w )
 {
-    if ( !w )
-    {
-        return false;
-    }
-
-    return w->inherits( "QComboBoxPrivateContainer" );
-
-    // ComboBox popup 一定是 Popup
-    if ( w->windowType() != Qt::Popup )
-    {
-        return false;
-    }
-
-    // Menu 已单独处理
-    if ( qobject_cast<QMenu*>( w ) )
-    {
-        return false;
-    }
-
-    // ScrollBar 绝对不是
-    if ( qobject_cast<QScrollBar*>( w ) )
-    {
-        return false;
-    }
-
-    // parent 链中有 QComboBox
-    QWidget* p = w->parentWidget();
-    while ( p )
-    {
-        if ( qobject_cast<QComboBox*>( p ) )
-        {
-            return true;
-        }
-        p = p->parentWidget();
-    }
-
-    return false;
+    return w && w->inherits( "QComboBoxPrivateContainer" );
 }
 
 QSize FluentUI3Style::sizeFromContents( ContentsType type, const QStyleOption* option, const QSize& size, const QWidget* widget ) const
@@ -7623,7 +7587,6 @@ void FluentUI3Style::polish( QApplication* app )
     QProxyStyle::polish( app );
 
     updateComboBoxAnimationEffect( app );
-    updateMenuAnimationEffect( app );
 }
 
 void FluentUI3Style::polish( QWidget* widget )
@@ -7648,13 +7611,11 @@ void FluentUI3Style::polish( QWidget* widget )
             cb->setAutoFillBackground( true );
         }
 
-        QObject* animatorObject = cb->property( cBPopupAnimatorProperty ).value<QObject*>();
-        if ( !animatorObject )
+        QObject* animatorObject =
+            cb->property( cBPopupAnimatorProperty ).value<QObject*>();
+        if ( !cb->inherits( "ExComboBox" ) && !animatorObject )
         {
             auto* animator = new ComboBoxPopupAnimator( cb, cb );
-            animator->setDuration( cBPopupAnimationDuration );
-            animator->setWinUI3Duration( cBPopupWinUI3AnimationDuration );
-            animator->setPopupOffset( cBPopupOffset );
             cb->setProperty( cBPopupAnimatorProperty, QVariant::fromValue<QObject*>( animator ) );
         }
     }
@@ -7946,11 +7907,6 @@ void FluentUI3Style::unpolish( QApplication* app )
         app->setEffectEnabled( Qt::UI_AnimateCombo, oldComboBoxAnimationEffect );
         comboBoxAnimationEffectSaved = false;
     }
-    if ( menuAnimationEffectSaved )
-    {
-        app->setEffectEnabled( Qt::UI_AnimateMenu, oldMenuAnimationEffect );
-        menuAnimationEffectSaved = false;
-    }
     QProxyStyle::unpolish( app );
 }
 
@@ -7962,11 +7918,9 @@ void FluentUI3Style::updateComboBoxAnimationEffect( QApplication* app )
     }
 
     const QVariant dropDownValue        = app->property( ComboBoxPopupDropDownAnimationEnabledProperty );
-    const QVariant winUI3Value          = app->property( ComboBoxPopupWinUI3AnimationEnabledProperty );
     const bool dropDownAnimationEnabled = !dropDownValue.isValid() || dropDownValue.toBool();
-    const bool winUI3AnimationEnabled   = winUI3Value.isValid() && winUI3Value.toBool();
     const bool customAnimationEnabled =
-        !app->property( "_q_scrollHint_center" ).toBool() && ( dropDownAnimationEnabled || winUI3AnimationEnabled );
+        !app->property( "_q_scrollHint_center" ).toBool() && dropDownAnimationEnabled;
 
     if ( customAnimationEnabled )
     {
@@ -7981,32 +7935,6 @@ void FluentUI3Style::updateComboBoxAnimationEffect( QApplication* app )
     {
         app->setEffectEnabled( Qt::UI_AnimateCombo, oldComboBoxAnimationEffect );
         comboBoxAnimationEffectSaved = false;
-    }
-}
-
-void FluentUI3Style::updateMenuAnimationEffect( QApplication* app )
-{
-    if ( !app )
-    {
-        return;
-    }
-
-    const QVariant globalValue        = app->property( MenuPopupAnimationEnabledProperty );
-    const bool customAnimationEnabled = !globalValue.isValid() || globalValue.toBool();
-
-    if ( customAnimationEnabled )
-    {
-        if ( !menuAnimationEffectSaved )
-        {
-            oldMenuAnimationEffect   = app->isEffectEnabled( Qt::UI_AnimateMenu );
-            menuAnimationEffectSaved = true;
-        }
-        app->setEffectEnabled( Qt::UI_AnimateMenu, false );
-    }
-    else if ( menuAnimationEffectSaved )
-    {
-        app->setEffectEnabled( Qt::UI_AnimateMenu, oldMenuAnimationEffect );
-        menuAnimationEffectSaved = false;
     }
 }
 

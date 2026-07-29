@@ -4,13 +4,13 @@
 #include <QCursor>
 #include <QEasingCurve>
 #include <QEvent>
-#include <QKeyEvent>
 #include <QMenu>
 #include <QPainter>
 #include <QPixmap>
 #include <QPointer>
 #include <QRegion>
 #include <QVariantAnimation>
+#include <QWidgetAction>
 #include <QtMath>
 
 #include "fluentui3styleproperties.h"
@@ -38,6 +38,24 @@ private:
     QPixmap m_snapshot;
 };
 
+static bool menuContainsWidgetAction( const QMenu* menu )
+{
+    if ( !menu )
+    {
+        return false;
+    }
+
+    for ( QAction* action : menu->actions() )
+    {
+        if ( qobject_cast<QWidgetAction*>( action ) )
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 static bool menuPopupAnimationEnabled( const QMenu* menu )
 {
     const QVariant globalValue = qApp->property( MenuPopupAnimationEnabledProperty );
@@ -51,7 +69,15 @@ static bool menuPopupAnimationEnabled( const QMenu* menu )
         const QVariant localValue = menu->property( MenuPopupAnimationEnabledProperty );
         if ( localValue.isValid() )
         {
-            return localValue.toBool();
+            if ( !localValue.toBool() )
+            {
+                return false;
+            }
+        }
+
+        if ( menuContainsWidgetAction( menu ) )
+        {
+            return false;
         }
     }
 
@@ -69,15 +95,19 @@ public:
         connect( menu,
                  &QMenu::aboutToShow,
                  this,
-                 [ this ] { prepareForShow(); } );
+                 [ this ] { prepareForShow( true ); } );
     }
 
-    ~MenuPopupAnimatorImpl() override { stop(); }
+    ~MenuPopupAnimatorImpl() override { stop( false ); }
 
     void setDuration( int duration ) { m_duration = qMax( 0, duration ); }
 
-    void stop()
+    void stop() { stop( true ); }
+
+    void stop( bool repaintRealMenu )
     {
+        restoreNativeMenuEffect();
+
         if ( m_animation )
         {
             m_animation->stop();
@@ -85,7 +115,7 @@ public:
             m_animation = nullptr;
         }
 
-        restoreMenu();
+        restoreMenu( repaintRealMenu );
     }
 
 protected:
@@ -98,26 +128,43 @@ protected:
 
         if ( event->type() == QEvent::Show )
         {
-            if ( menuPopupAnimationEnabled( m_menu ) && m_menu->windowType() == Qt::Popup )
+            // QMenu 在发送 Show 前已经完成 UI_AnimateMenu 判断，此时可以
+            // 立即恢复全局原值，不影响当前 popup。
+            restoreNativeMenuEffect();
+        }
+
+        if ( menuContainsWidgetAction( m_menu ) )
+        {
+            return QObject::eventFilter( watched, event );
+        }
+
+        if ( event->type() == QEvent::Show )
+        {
+            if ( m_preparedForShow
+                 || ( menuPopupAnimationEnabled( m_menu )
+                      && m_menu->windowType() == Qt::Popup ) )
             {
                 if ( !m_preparedForShow )
                 {
-                    prepareForShow();
+                    prepareForShow( false );
                 }
 
-                QWidget* menuParent = m_menu->parentWidget();
-                if ( menuParent && menuParent->inherits( "QMenuBar" ) )
+                if ( m_preparedForShow )
                 {
-                    const bool opensAbove = m_menu->geometry().center().y() < QCursor::pos().y();
-                    m_menu->move( m_menu->pos().x() + 3, m_menu->pos().y() + ( opensAbove ? -4 : 4 ) );
+                    QWidget* menuParent = m_menu->parentWidget();
+                    if ( menuParent && menuParent->inherits( "QMenuBar" ) )
+                    {
+                        const bool opensAbove = m_menu->geometry().center().y() < QCursor::pos().y();
+                        m_menu->move( m_menu->pos().x() + 3, m_menu->pos().y() + ( opensAbove ? -4 : 4 ) );
+                    }
+                    animate();
                 }
-                animate();
             }
         }
-        else if ( event->type() == QEvent::Hide || event->type() == QEvent::Close )
+        else if ( event->type() == QEvent::Hide )
         {
             // QMenu 收起时只恢复真实绘制，不播放动画。
-            stop();
+            stop( false );
         }
         else if ( m_isOpening )
         {
@@ -126,17 +173,13 @@ protected:
                 case QEvent::MouseButtonPress :
                 case QEvent::MouseButtonRelease :
                 case QEvent::MouseButtonDblClick :
-                    return true;
+                case QEvent::MouseMove :
+                case QEvent::Wheel :
+                case QEvent::ContextMenu :
                 case QEvent::KeyPress :
                 case QEvent::KeyRelease :
-                {
-                    const int key = static_cast<QKeyEvent*>( event )->key();
-                    if ( key == Qt::Key_Escape || key == Qt::Key_Enter || key == Qt::Key_Return || key == Qt::Key_Space )
-                    {
-                        return true;
-                    }
-                    break;
-                }
+                case QEvent::ShortcutOverride :
+                    return true;
                 default :
                     break;
             }
@@ -146,15 +189,57 @@ protected:
     }
 
 private:
-    void prepareForShow()
+    void suppressNativeMenuEffect()
     {
-        stop();
+        if ( !qApp || m_nativeMenuEffectSuppressed )
+        {
+            return;
+        }
 
+        m_nativeMenuEffectBeforeSuppression =
+            qApp->isEffectEnabled( Qt::UI_AnimateMenu );
+        m_nativeMenuEffectSuppressed = true;
+        qApp->setEffectEnabled( Qt::UI_AnimateMenu, false );
+    }
+
+    void restoreNativeMenuEffect()
+    {
+        if ( !m_nativeMenuEffectSuppressed )
+        {
+            return;
+        }
+
+        if ( qApp )
+        {
+            qApp->setEffectEnabled(
+                Qt::UI_AnimateMenu,
+                m_nativeMenuEffectBeforeSuppression );
+        }
+        m_nativeMenuEffectSuppressed = false;
+    }
+
+    void prepareForShow( bool suppressNativeEffect )
+    {
         if ( !m_menu
              || !menuPopupAnimationEnabled( m_menu )
              || m_menu->windowType() != Qt::Popup )
         {
             return;
+        }
+
+        if ( m_isOpening
+             || m_preparedForShow
+             || m_animation
+             || m_overlay
+             || m_revealMaskActive
+             || !m_hiddenChildren.isEmpty() )
+        {
+            stop( false );
+        }
+
+        if ( suppressNativeEffect )
+        {
+            suppressNativeMenuEffect();
         }
 
         // QMenu::aboutToShow 发生在原生菜单窗口显示前。先禁止真实菜单
@@ -226,6 +311,10 @@ private:
 
         const bool opensAbove = m_menu->geometry().center().y() < QCursor::pos().y();
         m_startSnapshotY      = opensAbove ? m_menu->height() : -m_menu->height();
+        m_originalMenuMask    = m_menu->mask();
+        m_hadOriginalMenuMask = !m_originalMenuMask.isEmpty();
+        m_revealMaskActive    = true;
+        updateRevealMask( 1 );
         m_overlay->move( 0, m_startSnapshotY );
         // Qt 5 会在 show() 时立即提交子窗口首帧。必须先放到动画
         // 起点再显示，否则完整截图会在 (0, 0) 闪现一帧。
@@ -257,7 +346,12 @@ private:
 
                      const qreal progress = value.toReal();
                      const int snapshotY  = qRound( m_startSnapshotY * ( 1.0 - progress ) );
+                     const int visibleHeight =
+                         qBound( 1,
+                                 qRound( m_menu->height() * progress ),
+                                 m_menu->height() );
                      m_overlay->move( 0, snapshotY );
+                     updateRevealMask( visibleHeight );
                  } );
 
         connect( m_animation,
@@ -272,7 +366,27 @@ private:
         m_animation->start( QAbstractAnimation::DeleteWhenStopped );
     }
 
-    void restoreMenu()
+    void updateRevealMask( int visibleHeight )
+    {
+        if ( !m_menu || !m_revealMaskActive )
+        {
+            return;
+        }
+
+        const int height = qBound( 1, visibleHeight, m_menu->height() );
+        const int y = m_startSnapshotY > 0
+                          ? m_menu->height() - height
+                          : 0;
+        QRegion revealRegion(
+            QRect( 0, y, m_menu->width(), height ) );
+        if ( m_hadOriginalMenuMask )
+        {
+            revealRegion &= m_originalMenuMask;
+        }
+        m_menu->setMask( revealRegion );
+    }
+
+    void restoreMenu( bool repaintRealMenu = true )
     {
         m_isOpening      = false;
         m_preparedForShow = false;
@@ -293,10 +407,28 @@ private:
 
         if ( m_menu )
         {
-            // overlay 仍覆盖在最上层时先准备好真实菜单的最终帧，
-            // 再移除 overlay，避免 Qt 5 在动画结束处再闪一个空白帧。
-            m_menu->repaint();
+            if ( repaintRealMenu )
+            {
+                // overlay 仍覆盖在最上层时先准备好真实菜单的最终帧，
+                // 再移除 overlay，避免动画结束处出现空白尾帧。
+                m_menu->repaint();
+            }
+
+            if ( m_revealMaskActive )
+            {
+                if ( m_hadOriginalMenuMask )
+                {
+                    m_menu->setMask( m_originalMenuMask );
+                }
+                else
+                {
+                    m_menu->clearMask();
+                }
+            }
         }
+        m_originalMenuMask    = QRegion();
+        m_hadOriginalMenuMask = false;
+        m_revealMaskActive    = false;
 
         if ( m_overlay )
         {
@@ -305,7 +437,7 @@ private:
             m_overlay = nullptr;
         }
 
-        if ( m_menu )
+        if ( m_menu && repaintRealMenu )
         {
             m_menu->update();
         }
@@ -315,10 +447,15 @@ private:
     QPointer<MenuSnapshotOverlay> m_overlay;
     QPointer<QVariantAnimation> m_animation;
     QList<QPointer<QWidget>> m_hiddenChildren;
+    QRegion m_originalMenuMask;
     int m_startSnapshotY = 0;
     int m_duration       = 400;
     bool m_isOpening     = false;
     bool m_preparedForShow = false;
+    bool m_hadOriginalMenuMask = false;
+    bool m_revealMaskActive = false;
+    bool m_nativeMenuEffectSuppressed = false;
+    bool m_nativeMenuEffectBeforeSuppression = false;
 };
 
 MenuPopupAnimator::MenuPopupAnimator( QMenu* menu, QObject* parent )

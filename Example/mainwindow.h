@@ -12,7 +12,7 @@ class QTabBar;
 class ExNavTreeWidget;
 class ExWinUINavigationView;
 class ExStackedWidget;
-class QComboBox;
+class ExComboBox;
 class QTreeWidgetItem;
 class TabShowcaseWidget;
 class InstalledSoftwareTableWidget;
@@ -142,9 +142,9 @@ private:
     WidgetBgMode m_widgetBgMode{WidgetBgMode::None};
     QAction *m_navigationToggleAction{nullptr};
 
-    QComboBox *themeComboBox{nullptr};
-    QComboBox *m_colorSchemeCombo{nullptr};
-    QComboBox *m_styleComboBox{nullptr};
+    ExComboBox *themeComboBox{nullptr};
+    ExComboBox *m_colorSchemeCombo{nullptr};
+    ExComboBox *m_styleComboBox{nullptr};
 
     QVector<QTreeWidgetItem *> m_mainNavItems;
     QTreeWidgetItem *m_navExWidgetsRoot{nullptr};

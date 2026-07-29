@@ -85,6 +85,7 @@
 #include <QButtonGroup>
 
 // Project Headers
+#include <excombobox.h>
 #include <exstackedwidget.h>
 #include <exnavtreewidget.h>
 #include <exmessagebox.h>
@@ -875,7 +876,7 @@ void MainWindow::setupThemeSelector(QToolBar *toolBar)
     QLabel *themeLabel = new QLabel(tr("主题："), toolBar);
     toolBar->addWidget(themeLabel);
 
-    themeComboBox = new QComboBox(toolBar);
+    themeComboBox = new ExComboBox(toolBar);
     themeComboBox->blockSignals(true);
     themeComboBox->addItem(tr("浅色"));
     themeComboBox->addItem(tr("暗色"));
@@ -901,7 +902,7 @@ void MainWindow::setupColorSchemeSelector(QToolBar *toolBar)
     QLabel *colorSchemeLabel = new QLabel(tr("配色："), toolBar);
     toolBar->addWidget(colorSchemeLabel);
 
-    m_colorSchemeCombo = new QComboBox(toolBar);
+    m_colorSchemeCombo = new ExComboBox(toolBar);
     m_colorSchemeCombo->blockSignals(true);
     m_colorSchemeCombo->addItem(QStringLiteral("Fluent"));
     m_colorSchemeCombo->addItem(QStringLiteral("Teams"));
@@ -931,12 +932,12 @@ void MainWindow::setupStyleSelector(QToolBar *toolBar)
     QLabel *styleLabel = new QLabel(tr("样式："), toolBar);
     toolBar->addWidget(styleLabel);
 
-    m_styleComboBox = new QComboBox(toolBar);
+    m_styleComboBox = new ExComboBox(toolBar);
     m_styleComboBox->addItems(QStyleFactory::keys());
     m_styleComboBox->setView(new QListView());
 
     {
-        const QPointer<QComboBox> comboGuard(m_styleComboBox);
+        const QPointer<ExComboBox> comboGuard(m_styleComboBox);
         connect(m_styleComboBox,
                 QOverload<int>::of(&QComboBox::currentIndexChanged),
                 this,

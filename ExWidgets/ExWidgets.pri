@@ -5,6 +5,7 @@ SOURCES += \
     $$PWD/exrangeslider.cpp \
     $$PWD/excolorpicker.cpp \
     $$PWD/excolorpickerbutton.cpp \
+    $$PWD/excombobox.cpp \
     $$PWD/exmessagebox.cpp \
     $$PWD/exnavtreewidget.cpp \
     $$PWD/exwinuinavigationview.cpp \
@@ -18,6 +19,7 @@ HEADERS += \
     $$PWD/exrangeslider.h \
     $$PWD/excolorpicker.h \
     $$PWD/excolorpickerbutton.h \
+    $$PWD/excombobox.h \
     $$PWD/exmessagebox.h \
     $$PWD/exnavtreewidget.h \
     $$PWD/exwinuinavigationview.h \

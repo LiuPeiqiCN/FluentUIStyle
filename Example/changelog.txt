@@ -1,3 +1,14 @@
+【更新内容2026-7-29】
+1.新增 ExComboBox 控件（自带下拉展开/收起动画，不受 Style 全局 ComboBox 动画属性控制）
+2.QComboBox 新增下拉展开动画（comboBoxPopupDropDownAnimationEnabled，支持 qApp 总开关与单控件局部控制）
+3.QMenu 新增弹出动画（menuPopupAnimationEnabled，规则同 ComboBox）
+4.修复 QComboBox 下拉面板透明度问题（背景填充）
+5.新增 ExSpectrumWidget 频谱控件；Qt 5 Example 以模拟 PCM 数据演示
+6.调整全局二级圆角（secondLevelRoundingRadius）及 QComboBox 填充色；统一左侧蓝色指示条尺寸与圆角
+7.修复 QTreeView 选中/悬浮背景未绘制到缩进区域
+8.修复 Qt 6.8+ QProgressBar Ring 矩形错误、QScrollBar 箭头尺寸错误
+9.QWindowKit 改为 Git 子模块引入；明确 CMake 为唯一维护的构建方式；按 Qt 版本条件启用无边框窗口
+
 【更新内容2026-7-1】
 1.集成 QWindowKit 无边框窗口，新增 FluentTitleBar / FluentWindowFrame 自定义标题栏
 2.窗口背景支持 DWM Blur、Acrylic、Mica、Mica Alt 四种 backdrop 模式

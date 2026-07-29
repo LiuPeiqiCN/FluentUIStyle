@@ -1717,12 +1717,11 @@ void FluentUI3Style::drawComplexControl( ComplexControl control,
             if ( doTransition && ( state & State_Enabled ) && ( tb->features & QStyleOptionToolButton::HasMenu ) )
             {
                 QNumberStyleAnimation* t = new QNumberStyleAnimation( obj );
-                // t->setEasingCurve( QEasingCurve::InOutSine );
                 qreal start = ( state & State_Sunken ) ? 0 : 180;
                 qreal end   = ( state & State_Sunken ) ? 180.0 : 0.0;
                 t->setStartValue( start );
                 t->setEndValue( end );
-                t->setDuration( 180 );
+                t->setDuration( 300 );
                 t->setFrameRate( QStyleAnimation::DefaultFps );
                 startAnimation( t );
             }

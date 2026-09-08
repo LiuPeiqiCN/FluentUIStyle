@@ -13,6 +13,7 @@
 #include "timelineshowcasewidget.h"
 #include "audiolevelmetershowcasewidget.h"
 #include "feedbackshowcasewidget.h"
+#include "navigationhintshowcasewidget.h"
 
 #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0) && !defined(Q_OS_ANDROID)
 #include "audiomaticplayerwidget.h"
@@ -1651,6 +1652,10 @@ void MainWindow::setupExWidgetsPages()
     auto *feedbackPage = new FeedbackShowcaseWidget(ui->stackedWidget);
     feedbackPage->setObjectName(QStringLiteral("pageExFeedback"));
     ui->stackedWidget->addWidget(feedbackPage);
+
+    auto *navigationHintPage = new NavigationHintShowcaseWidget(ui->stackedWidget);
+    navigationHintPage->setObjectName(QStringLiteral("pageExNavigationHint"));
+    ui->stackedWidget->addWidget(navigationHintPage);
 }
 
 void MainWindow::setupAudiomaticPlayerPage()
@@ -1706,6 +1711,8 @@ void MainWindow::addExWidgetsNavigation()
     const int timelinePageIndex = timelinePage ? ui->stackedWidget->indexOf(timelinePage) : -1;
     QWidget *feedbackPage = ui->stackedWidget->findChild<QWidget *>(QStringLiteral("pageExFeedback"));
     const int feedbackPageIndex = feedbackPage ? ui->stackedWidget->indexOf(feedbackPage) : -1;
+    QWidget *navigationHintPage = ui->stackedWidget->findChild<QWidget *>(QStringLiteral("pageExNavigationHint"));
+    const int navigationHintPageIndex = navigationHintPage ? ui->stackedWidget->indexOf(navigationHintPage) : -1;
     const int audiomaticPageIndex = m_audiomaticPlayerPage ? ui->stackedWidget->indexOf(m_audiomaticPlayerPage) : -1;
 
     m_navExWidgetsRoot = new QTreeWidgetItem();
@@ -1746,6 +1753,10 @@ void MainWindow::addExWidgetsNavigation()
     if (feedbackPageIndex >= 0)
     {
         addExWidgetItem(QStringLiteral("ExInfoBar / ExExpander"), feedbackPageIndex);
+    }
+    if (navigationHintPageIndex >= 0)
+    {
+        addExWidgetItem(QStringLiteral("ExBreadcrumbBar / ExTeachingTip"), navigationHintPageIndex);
     }
     if (colorPickerPageIndex >= 0)
     {

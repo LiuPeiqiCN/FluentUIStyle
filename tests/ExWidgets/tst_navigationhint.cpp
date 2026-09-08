@@ -10,6 +10,7 @@
 #include <QSignalSpy>
 #include <QStyledItemDelegate>
 #include <QToolButton>
+#include <QVariantAnimation>
 #include <QtTest>
 
 class NavigationHintTests final : public QObject
@@ -34,6 +35,9 @@ private Q_SLOTS:
     void tipCloseButtonSurvivesReopen();
     void tipReopenResetsScrollPosition();
     void tipActionButtonAccent();
+    void tipOpenUsesScaleAnimation();
+    void tipFirstOpenSnapshotScrollBar_data();
+    void tipFirstOpenSnapshotScrollBar();
     void tipPropertyAccessors();
 };
 
@@ -298,7 +302,7 @@ void NavigationHintTests::tipSupportsUntargetedAndFooterClose()
     QVERIFY( tip->isOpen() );
     QVERIFY( !tip->target() );
     QVERIFY( host.rect().contains( tip->geometry() ) );
-    QVERIFY( tip->closeButton()->isVisible() );
+    QTRY_VERIFY( tip->closeButton()->isVisible() );
     QSignalSpy clicked( tip, &ExTeachingTip::closeButtonClick );
     QSignalSpy closed( tip, &ExTeachingTip::closed );
     tip->closeButton()->click();
@@ -383,6 +387,86 @@ void NavigationHintTests::tipActionButtonAccent()
     // 与直接配置底层 QPushButton 共用一份状态，避免两套属性相互覆盖。
     tip.actionButton()->setProperty( "accent", false );
     QVERIFY( !tip.actionButtonAccent() );
+}
+
+void NavigationHintTests::tipOpenUsesScaleAnimation()
+{
+    QWidget host;
+    host.resize( 800, 600 );
+    QPushButton target( &host );
+    target.setGeometry( 350, 300, 100, 32 );
+    auto* tip = new ExTeachingTip( &host );
+    tip->setTitle( QStringLiteral( "缩放动画" ) );
+    host.show();
+    tip->showAt( &target );
+
+    auto* animation = tip->findChild<QVariantAnimation*>();
+    auto* scroll = tip->findChild<QScrollArea*>();
+    QVERIFY( animation && scroll );
+    QCOMPARE( animation->startValue().toDouble(), 0.01 );
+    QCOMPARE( animation->endValue().toDouble(), 1.0 );
+    QCOMPARE( animation->duration(), 167 );
+    QCOMPARE( animation->easingCurve().type(), QEasingCurve::OutQuint );
+    QCOMPARE( animation->state(), QAbstractAnimation::Running );
+    QVERIFY( scroll->isHidden() );
+    const QRect animationGeometry = tip->geometry();
+    // 显示后宿主产生的延迟布局请求不能在下一轮事件循环中取消动画。
+    QEvent layoutRequest( QEvent::LayoutRequest );
+    QCoreApplication::sendEvent( &host, &layoutRequest );
+    QTest::qWait( 50 );
+    QCOMPARE( animation->state(), QAbstractAnimation::Running );
+    QTRY_COMPARE( animation->state(), QAbstractAnimation::Stopped );
+    QTRY_VERIFY( scroll->isVisible() );
+    QCOMPARE( tip->geometry(), animationGeometry );
+}
+
+void NavigationHintTests::tipFirstOpenSnapshotScrollBar_data()
+{
+    QTest::addColumn<int>( "contentHeight" );
+    QTest::addColumn<bool>( "needsScrollBar" );
+    QTest::newRow( "short-content" ) << 40 << false;
+    QTest::newRow( "overflow-content" ) << 1000 << true;
+}
+
+void NavigationHintTests::tipFirstOpenSnapshotScrollBar()
+{
+    QFETCH( int, contentHeight );
+    QFETCH( bool, needsScrollBar );
+    class PaintCounter final : public QObject
+    {
+    public:
+        int paints = 0;
+        bool eventFilter( QObject*, QEvent* event ) override
+        {
+            if ( event->type() == QEvent::Paint )
+                ++paints;
+            return false;
+        }
+    } counter;
+
+    QWidget host;
+    host.resize( 800, 600 );
+    QPushButton target( &host );
+    target.setGeometry( 350, 300, 100, 32 );
+    ExTeachingTip tip( &host );
+    tip.setTitle( QStringLiteral( "首次显示" ) );
+    auto* content = new QLabel( QStringLiteral( "提示内容" ) );
+    content->setFixedHeight( contentHeight );
+    tip.setContent( content );
+    auto* scroll = tip.findChild<QScrollArea*>();
+    QVERIFY( scroll );
+    auto* bar = scroll->verticalScrollBar();
+    bar->installEventFilter( &counter );
+    host.show();
+    tip.showAt( &target );
+
+    // 尚未进入事件循环，此时的 Paint 来自同步生成动画快照。
+    QCOMPARE( counter.paints > 0, needsScrollBar );
+    QCOMPARE( bar->maximum() > 0, needsScrollBar );
+    auto* animation = tip.findChild<QVariantAnimation*>();
+    QVERIFY( animation );
+    QTRY_COMPARE( animation->state(), QAbstractAnimation::Stopped );
+    QCOMPARE( bar->isVisible(), needsScrollBar );
 }
 
 void NavigationHintTests::tipPropertyAccessors()

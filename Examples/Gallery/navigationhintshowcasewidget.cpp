@@ -197,6 +197,7 @@ NavigationHintShowcaseWidget::NavigationHintShowcaseWidget( QWidget* parent ) : 
         { apply, tr( "应用配置" ), tr( "点击“应用配置”保存本次演示选择。点击提示中的“完成”结束引导。" ) }
     };
     m_tourTip = new ExTeachingTip( this );
+    m_tourTip->setAnimationEnabled( false );
     m_tourTip->setPreferredPlacement( ExTeachingTip::Top );
     // 只由操作按钮推进步骤；叉号、Esc、目标失效都直接结束，不能自动跳到下一步。
     connect( startTour, &QPushButton::clicked, this, [this]() { showTourStep( 0 ); } );

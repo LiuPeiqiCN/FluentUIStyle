@@ -43,6 +43,8 @@ public:
     EXWIDGETS_DECLARE_PROPERTY_D( HeroContentPlacement, heroContentPlacement, heroContentPlacement, setHeroContentPlacement )
     EXWIDGETS_DECLARE_PROPERTY_D( Placement, preferredPlacement, preferredPlacement, setPreferredPlacement )
     EXWIDGETS_DECLARE_PROPERTY_D( bool, isLightDismissEnabled, isLightDismissEnabled, setIsLightDismissEnabled )
+    // 默认启用打开动画；关闭开关时立即结束正在播放的动画。
+    EXWIDGETS_DECLARE_PROPERTY_D( bool, animationEnabled, isAnimationEnabled, setAnimationEnabled )
     Q_PROPERTY( bool isOpen READ isOpen WRITE setIsOpen NOTIFY isOpenChanged )
 
     explicit ExTeachingTip( QWidget* parent = nullptr );
@@ -87,6 +89,8 @@ private:
     QRect visibleTargetRect() const;
     void requestClose( CloseReason reason );
     void forceClose();
+    void startOpenAnimation();
+    void stopOpenAnimation();
     void updateButtons();
     void replaceContent( QPointer<QWidget>& current, QWidget* replacement, QWidget* container );
 };

@@ -4,6 +4,7 @@
 
 #include <QApplication>
 #include <QCloseEvent>
+#include <QEasingCurve>
 #include <QEvent>
 #include <QHBoxLayout>
 #include <QKeyEvent>
@@ -13,12 +14,15 @@
 #include <QPainterPathStroker>
 #include <QPixmap>
 #include <QPushButton>
+#include <QRegion>
 #include <QScrollArea>
 #include <QScrollBar>
+#include <QSizePolicy>
 #include <QStyle>
 #include <QTimer>
 #include <QToolButton>
 #include <QVBoxLayout>
+#include <QVariantAnimation>
 #include <QtMath>
 
 namespace {
@@ -102,6 +106,11 @@ public:
   QMargins m_placementMargin;
   CloseReason m_closeReason = CloseReason::Programmatic;
   bool m_closing = false;
+  bool m_animationEnabled = true;
+  QVariantAnimation *m_openAnimation = nullptr;
+  QPixmap m_openSnapshot;
+  qreal m_openScale = 1.0;
+  bool m_openAnimationActive = false;
   QPixmap m_shadow;
   QPainterPath m_shadowSurface;
   bool m_shadowDark = false;
@@ -128,6 +137,9 @@ ExTeachingTip::ExTeachingTip(QWidget *parent)
   d->m_scrollArea = new QScrollArea(this);
   d->m_scrollArea->setFrameShape(QFrame::NoFrame);
   d->m_scrollArea->setWidgetResizable(true);
+  QSizePolicy scrollPolicy = d->m_scrollArea->sizePolicy();
+  scrollPolicy.setRetainSizeWhenHidden(true);
+  d->m_scrollArea->setSizePolicy(scrollPolicy);
   d->m_scrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
   d->m_scrollArea->setAutoFillBackground(false);
   d->m_scrollArea->viewport()->setAutoFillBackground(false);
@@ -135,8 +147,6 @@ ExTeachingTip::ExTeachingTip(QWidget *parent)
   auto *content = new QWidget;
   auto *layout = new QVBoxLayout(content);
   d->m_contentLayout = layout;
-  //   layout->setContentsMargins(16, 12, 16, 16);
-  //   layout->setContentsMargins(16, 12, 16, 16);
   layout->setSpacing(10);
   d->m_heroContainer = new QWidget(content);
   auto *heroLayout = new QVBoxLayout(d->m_heroContainer);
@@ -199,6 +209,20 @@ ExTeachingTip::ExTeachingTip(QWidget *parent)
   connect(d->m_footerCloseButton, &QPushButton::clicked, this, closeClicked);
   connect(d->m_actionButton, &QPushButton::clicked, this,
           &ExTeachingTip::actionButtonClick);
+
+  d->m_openAnimation = new QVariantAnimation(this);
+  d->m_openAnimation->setStartValue(0.01);
+  d->m_openAnimation->setEndValue(1.0);
+  d->m_openAnimation->setDuration(167);
+  d->m_openAnimation->setEasingCurve(QEasingCurve::OutCubic);
+  connect(d->m_openAnimation, &QVariantAnimation::valueChanged, this,
+          [this](const QVariant &value) {
+            Q_D(ExTeachingTip);
+            d->m_openScale = value.toReal();
+            update();
+          });
+  connect(d->m_openAnimation, &QVariantAnimation::finished, this,
+          [this]() { stopOpenAnimation(); });
 }
 
 ExTeachingTip::~ExTeachingTip() {
@@ -410,6 +434,19 @@ void ExTeachingTip::setIsLightDismissEnabled(bool enabled) {
 }
 bool ExTeachingTip::isOpen() const { return d_func()->m_open; }
 
+bool ExTeachingTip::isAnimationEnabled() const {
+  return d_func()->m_animationEnabled;
+}
+
+void ExTeachingTip::setAnimationEnabled(bool enabled) {
+  Q_D(ExTeachingTip);
+  if (d->m_animationEnabled == enabled)
+    return;
+  d->m_animationEnabled = enabled;
+  if (!enabled && d->m_openAnimationActive)
+    stopOpenAnimation();
+}
+
 void ExTeachingTip::showAt(QWidget *target) {
   if (target == this || (target && isAncestorOf(target)))
     return;
@@ -479,6 +516,54 @@ void ExTeachingTip::forceClose() {
   Q_D(ExTeachingTip);
   d->m_closeReason = CloseReason::Programmatic;
   QWidget::setVisible(false);
+}
+
+void ExTeachingTip::startOpenAnimation() {
+  Q_D(ExTeachingTip);
+  if (!d->m_animationEnabled)
+    return;
+  stopOpenAnimation();
+  if (width() <= 0 || height() <= 0)
+    return;
+
+  if (layout())
+    layout()->activate();
+  // 首次显示时，仅激活外层布局还不足以更新内容尺寸和滚动条容器。
+  // 在截图前同步完成布局请求，避免把排队等待隐藏的临时滚动条画进快照。
+  d->m_contentLayout->activate();
+  QEvent scrollLayoutRequest(QEvent::LayoutRequest);
+  QCoreApplication::sendEvent(d->m_scrollArea, &scrollLayoutRequest);
+  d->m_contentLayout->activate();
+  const qreal dpr = devicePixelRatioF();
+  d->m_openSnapshot = QPixmap(qCeil(width() * dpr), qCeil(height() * dpr));
+  d->m_openSnapshot.setDevicePixelRatio(dpr);
+  d->m_openSnapshot.fill(Qt::transparent);
+  {
+    QPainter snapshotPainter(&d->m_openSnapshot);
+    // 不绘制 QWidget 的窗口背景，避免把宿主页面复制进透明阴影区域。
+    QWidget::render(&snapshotPainter, QPoint(), QRegion(),
+                    QWidget::DrawChildren);
+  }
+  if (d->m_openSnapshot.isNull())
+    return;
+
+  d->m_openScale = 0.01;
+  d->m_openAnimationActive = true;
+  // 实际内容暂时隐藏，但 QSizePolicy 保留布局尺寸；动画不改变真实控件树。
+  d->m_scrollArea->hide();
+  d->m_openAnimation->start();
+  update();
+}
+
+void ExTeachingTip::stopOpenAnimation() {
+  Q_D(ExTeachingTip);
+  if (d->m_openAnimation->state() != QAbstractAnimation::Stopped)
+    d->m_openAnimation->stop();
+  d->m_openAnimationActive = false;
+  d->m_openScale = 1.0;
+  d->m_openSnapshot = QPixmap();
+  d->m_scrollArea->show();
+  update();
 }
 
 void ExTeachingTip::closeEvent(QCloseEvent *event) {
@@ -679,8 +764,19 @@ void ExTeachingTip::schedulePlacement() {
   d->m_placementScheduled = true;
   QTimer::singleShot(0, this, [this, d]() {
     d->m_placementScheduled = false;
-    if (d->m_open && !updatePlacement())
+    if (!d->m_open)
+      return;
+    const QSize previousSize = size();
+    const Placement previousPlacement = d->m_actualPlacement;
+    if (!updatePlacement()) {
       forceClose();
+      return;
+    }
+    // 显示后宿主通常会补发一次 LayoutRequest；位置不变时不能因此终止动画。
+    // 只有快照尺寸或揭示方向已经失效，才切回实时内容。
+    if (d->m_openAnimationActive &&
+        (size() != previousSize || d->m_actualPlacement != previousPlacement))
+      stopOpenAnimation();
   });
 }
 
@@ -733,7 +829,8 @@ bool ExTeachingTip::eventFilter(QObject *watched, QEvent *event) {
     return false;
   const bool ownWidget = widget == this || isAncestorOf(widget);
   const bool sameWindow = widget->window() == window();
-  if (ownWidget && event->type() == QEvent::LayoutRequest)
+  if (ownWidget && event->type() == QEvent::LayoutRequest &&
+      !d->m_openAnimationActive)
     schedulePlacement();
   if (sameWindow &&
       (event->type() == QEvent::ShortcutOverride ||
@@ -783,11 +880,14 @@ void ExTeachingTip::showEvent(QShowEvent *event) {
     Q_EMIT isOpenChanged(true);
     if (guard && d->m_open)
       Q_EMIT opened();
+    if (guard && d->m_open)
+      startOpenAnimation();
   }
 }
 
 void ExTeachingTip::hideEvent(QHideEvent *event) {
   Q_D(ExTeachingTip);
+  stopOpenAnimation();
   QWidget::hideEvent(event);
   if (!d->m_open)
     return;
@@ -813,6 +913,41 @@ void ExTeachingTip::paintEvent(QPaintEvent *) {
   Q_D(ExTeachingTip);
   QPainter painter(this);
   painter.setRenderHint(QPainter::Antialiasing);
+  if (d->m_openAnimationActive) {
+    const QRectF fullRect(0.0, 0.0, width(), height());
+    const QRectF body = fullRect.adjusted(SurfaceInset, SurfaceInset,
+                                          -SurfaceInset, -SurfaceInset);
+    const qreal scale = qBound(0.01, d->m_openScale, 1.0);
+    QPointF origin = body.center();
+    if (d->m_target) {
+      const qreal insetX = qMin(body.width() / 2.0, 13.0);
+      const qreal insetY = qMin(body.height() / 2.0, 13.0);
+      const qreal anchorX = qBound(body.left() + insetX, qreal(d->m_anchor.x()),
+                                   body.right() - insetX);
+      const qreal anchorY = qBound(body.top() + insetY, qreal(d->m_anchor.y()),
+                                   body.bottom() - insetY);
+      switch (placementSide(d->m_actualPlacement)) {
+      case Bottom:
+        origin = QPointF(anchorX, body.top());
+        break;
+      case Left:
+        origin = QPointF(body.right(), anchorY);
+        break;
+      case Right:
+        origin = QPointF(body.left(), anchorY);
+        break;
+      default:
+        origin = QPointF(anchorX, body.bottom());
+        break;
+      }
+    }
+    painter.setRenderHint(QPainter::SmoothPixmapTransform);
+    painter.translate(origin);
+    painter.scale(scale, scale);
+    painter.translate(-origin);
+    painter.drawPixmap(0, 0, d->m_openSnapshot);
+    return;
+  }
   const QRectF body = QRectF(rect()).adjusted(SurfaceInset, SurfaceInset,
                                               -SurfaceInset, -SurfaceInset);
   if (body.width() < 32 || body.height() < 32)

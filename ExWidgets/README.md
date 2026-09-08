@@ -74,6 +74,8 @@ LIBS += -lExWidgets
 | `ExInfoBar` | `exinfobar.h` | 页面内非阻塞通知，支持四种严重级别、操作与关闭动画 | ExWidgets → ExInfoBar / ExExpander |
 | `ExInfoBarHost` | `exinfobarhost.h` | 窗口级 InfoBar 弹出、六向定位、多条堆叠与超时管理 | ExWidgets → ExInfoBar / ExExpander |
 | `ExExpander` | `exexpander.h` | 可向上或向下展开的 Header/Content 折叠容器 | ExWidgets → ExInfoBar / ExExpander |
+| `ExBreadcrumbBar` | `exbreadcrumbbar.h` | 路径导航、前缀溢出菜单、文本省略、键盘与 RTL 支持 | ExWidgets → ExBreadcrumbBar / ExTeachingTip |
+| `ExTeachingTip` | `exteachingtip.h` | 窗口内非模态引导气泡，支持目标跟随、自动换边、操作按钮与外部关闭 | ExWidgets → ExBreadcrumbBar / ExTeachingTip |
 | `ExTimerDial` | `extimerdial.h` | 剩余时间、环形进度与预计完成时刻 | Win11Clock 计时器 |
 | `ExTimeline` / `ExTimelineEvent` | `extimeline.h` | 事件时间轴，支持水平/垂直、单侧/交错布局、状态节点和动画 | ExWidgets → ExTimeline |
 | `ExLiquidGauge` | `exliquidgauge.h` | Ant Design 风格水波图，支持四种形状、双层波浪和中心文本 | ExWidgets → ExLiquidGauge |
@@ -329,6 +331,108 @@ connect(btn, &ExColorPickerButton::selectedColorChanged, this, [](const QColor &
 ```
 
 ---
+
+## ExBreadcrumbBar
+
+按 WinUI3 的 BreadcrumbBar/BreadcrumbLayout 实现核心交互：从末项向前保留可见后缀，前面的路径折叠到省略号菜单，菜单按“最近的上级在前”逆序排列。行内背景透明，默认 14 像素、普通字重；末项不加粗，也没有普通按钮的悬停底色。支持 Enter、Space、方向键、Home、End、Tab 和 RTL。
+
+`ItemsSource` 对应 Qt 的 `QVariantList`；`ItemTemplate` 对应 `QAbstractItemDelegate*`；点击信号直接提供 WinUI 事件中的 Index 和 Item，不另建事件参数对象。
+
+```cpp
+#include "exbreadcrumbbar.h"
+
+auto* breadcrumb = new ExBreadcrumbBar(this);
+breadcrumb->setItemsSource({tr("主页"), tr("设备"), tr("音频设置")});
+connect(breadcrumb, &ExBreadcrumbBar::itemClicked, this,
+        [breadcrumb](int index, const QVariant& item) {
+    // 包括溢出菜单，index 始终是完整 ItemsSource 的索引。
+    // item 是原始 QVariant，不会强制转换成字符串。
+    Q_UNUSED(item);
+    breadcrumb->setItemsSource(breadcrumb->itemsSource().mid(0, index + 1));
+});
+```
+
+控件只发送点击信号，**不会自动修改路径或执行导航**。末项过长时使用 Qt 文本省略，完整文本保留在工具提示中。
+
+自定义项可以传入 QVariantMap 或自定义元类型，再通过 `setItemTemplate(delegate)` 设置 Qt 委托。委托的 `sizeHint()` 和 `paint()` 同时用于行内项与溢出菜单；`index.data(Qt::UserRole)` 是原始数据，`DisplayRole` 默认来自 `QVariant::toString()`。委托不转移所有权，建议以 BreadcrumbBar 为父对象；委托被删除时自动回退到默认显示。
+
+## ExTeachingTip
+
+窗口内非模态引导提示，具有缓存的柔和阴影和尾巴。不使用 `exec()`、遮罩或顶层弹窗，不主动抢走显示前的焦点。关闭叉号根据当前 `QPalette::ButtonText` 绘制，不使用平台标题栏图标，因此随明暗主题、禁用状态变化。
+
+```cpp
+#include "exteachingtip.h"
+
+auto* tip = new ExTeachingTip(this);
+tip->setTitle(tr("快捷配置"));
+tip->setSubtitle(tr("在这里调整设备参数。"));
+tip->setActionButtonContent(tr("了解更多"));
+tip->setCloseButtonContent(tr("知道了")); // 非空时使用底部关闭按钮。
+tip->setPreferredPlacement(ExTeachingTip::Bottom);
+tip->setTarget(settingsButton);
+tip->setIsOpen(true); // 目标必须已经显示；也可使用 showAt(settingsButton)。
+```
+
+### 与 WinUI3 的接口对应
+
+| WinUI3 属性/事件 | Qt 接口与调整 |
+|---|---|
+| Title / Subtitle | `setTitle(QString)` / `setSubtitle(QString)`，使用纯文本 |
+| IsOpen / Target | `setIsOpen(bool)` / `setTarget(QWidget*)`；提供 `isOpenChanged(bool)` |
+| ActionButtonContent / CloseButtonContent | 使用 QString 按钮文字；底部关闭内容为空时使用标题区叉号 |
+| ActionButtonStyle / CloseButtonStyle / Command | 不照搬 XAML；操作按钮默认使用 accent，可通过 `setActionButtonAccent(false)` 关闭。通过 `actionButton()`、`closeButton()` 配置原生 QPushButton 的样式、图标、启用状态，通过 Qt 信号连接业务逻辑 |
+| Content / HeroContent | `setContent(QWidget*)` / `setHeroContent(QWidget*)`，接管新控件所有权；替换时延迟删除旧控件 |
+| HeroContentPlacement | `setHeroContentPlacement(HeroContentPlacement::Auto/Top/Bottom)` |
+| IconSource | `setIconSource(QIcon)` |
+| TailVisibility | `setTailVisibility(TailVisibility::Auto/Visible/Collapsed)` |
+| PlacementMargin | `setPlacementMargin(QMargins)` |
+| PreferredPlacement | Auto、Top、Bottom、Left、Right、TopRight、TopLeft、BottomRight、BottomLeft、LeftTop、LeftBottom、RightTop、RightBottom、Center |
+| IsLightDismissEnabled | `setIsLightDismissEnabled(bool)`，外部点击或滚动可关闭，关闭按钮隐藏；原输入事件仍交给页面处理 |
+| ActionButtonClick / CloseButtonClick | `actionButtonClick()` / `closeButtonClick()`；操作按钮不会自动关闭 |
+| 生命周期 | `opened()`、`closing(CloseReason, bool*)`、`closed(CloseReason)` |
+| CloseReason | CloseButton、LightDismiss、Programmatic |
+
+`closing` 的取消参数只对**同线程直接连接**有效，不可保存指针或使用队列连接，不移植 WinRT 的异步 Deferral：
+
+```cpp
+connect(tip, &ExTeachingTip::closing, tip,
+        [](ExTeachingTip::CloseReason reason, bool* cancel) {
+    // 按需要设置 *cancel = true；这里只处理同步关闭决策。
+    Q_UNUSED(reason);
+    Q_UNUSED(cancel);
+}, Qt::DirectConnection);
+```
+
+Qt 侧边界与生命周期：
+
+- **使用 new 创建，不加入布局。** 首次显示时由目标所在窗口持有；无 Target 时使用构造时给定父控件所在窗口，默认放在右下角。跨窗口保存指针推荐使用 `QPointer<ExTeachingTip>`。
+- 目标使用弱引用，移动、缩放后重新定位，滚出可视区域、隐藏、被删除或重设父控件时强制关闭。这类关闭不能取消，避免遗留浮层；无目标提示所在页面切换时，调用方应显式关闭。
+- 窗口太小而无法容纳时不显示；内容过高时内部滚动，恢复短内容时重新计算高度。
+- 保持窗口内子控件实现，因此不提供 `ShouldConstrainToRootBounds=false` 的跨窗口浮层模式；也不暴露 XAML DependencyProperty、TemplateSettings。方向名称与语义对齐 WinUI，但边缘回退与限界由 Qt 的宿主尺寸决定。
+- `actionButtonAccent` 是 Qt 侧的便捷属性，默认 `true`，转发到操作按钮的 `accent` 动态属性，由 FluentUI3Style 绘制；关闭按钮不受影响，也不会因此改变默认按钮或焦点。其他 QStyle 是否呈现强调色取决于该样式是否支持 `accent`。
+- 阴影使用与本项目 QToolTip 相同的四层颜色、透明度和扩散范围，沿包含尾巴的轮廓外扩；只缓存轮廓，不给整个控件树设置 QGraphicsEffect。
+- 边框使用 1 个逻辑像素的线宽：Light 沿用 `surfaceStrokeFlyout`，Dark 使用按钮较亮的 `controlStrokeSecondary`，避免描边与深色面板背景融在一起；以 `QPen` 绘制，不依赖 QToolTip 的复合边框实现。
+
+源码对照：[BreadcrumbLayout](https://github.com/microsoft/microsoft-ui-xaml/blob/main/controls/dev/Breadcrumb/BreadcrumbLayout.cpp)、[BreadcrumbBar 样式](https://github.com/microsoft/microsoft-ui-xaml/blob/main/controls/dev/Breadcrumb/BreadcrumbBar.xaml)、[BreadcrumbBarItem 溢出与键盘处理](https://github.com/microsoft/microsoft-ui-xaml/blob/main/controls/dev/Breadcrumb/BreadcrumbBarItem.cpp)、[TeachingTip 接口](https://github.com/microsoft/microsoft-ui-xaml/blob/main/controls/dev/TeachingTip/TeachingTip.idl)。
+
+### 分步操作引导示例
+
+维护提示：TeachingTip 的子控件、状态和阴影缓存集中在源文件的 `ExTeachingTipPrivate`，公共头文件通过 `EXWIDGETS_DECLARE_PROPERTY_D` 声明转发属性，不重复存储标签和按钮内容。圆角统一调整 `paintEvent()` 中的局部常量 `cornerRadius`，边框、阴影和尾巴避让会跟随该值。
+
+Gallery 的 BreadcrumbBar / TeachingTip 页面下方提供“分步操作引导”：点击“开始引导 / 重新开始”，依次介绍输出设备、输出音量和应用配置。示例只修改页面中的演示数据，不修改系统设置。
+
+实现见 `Examples/Gallery/navigationhintshowcasewidget.cpp` 的 `showTourStep()` 和 `stopTour()`：
+
+- 用步骤列表保存目标控件、标题和说明，复用一个 `ExTeachingTip`。
+- 在 `actionButtonClick` 中推进步骤；先 `dismiss()`，再滚动目标到可视区、更新内容并 `showAt()`。最后一步将按钮文字改为“完成”。
+- 切换步骤前清除当前步骤标记，使这次主动关闭不被当成用户退出；`closed` 只处理退出，不负责推进。
+- 叉号、Esc、目标不可见或切换页面会结束引导；再次开始时回到第一步。
+
+手动验收：连续走完三步、每一步按 Esc 或叉号退出后重启、引导中切换页面、缩小窗口并滚动页面，确认不遗留浮层或跳过步骤。
+
+### 可选回归测试
+
+启用 CMake 选项 `EXWIDGETS_BUILD_TESTS=ON` 可生成 `ExWidgetsNavigationHintTests`，需要对应 Qt 安装中的 Qt Test 模块。测试覆盖溢出索引和顺序、Qt 委托与原始数据、RTL、关闭原因与取消、无目标提示、目标生命周期、长内容恢复和滚动裁剪。默认关闭，不增加正常构建的 Qt Test 依赖。
 
 ## ExMessageBox
 

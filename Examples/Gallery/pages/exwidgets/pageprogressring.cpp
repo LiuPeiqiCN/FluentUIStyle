@@ -1,4 +1,4 @@
-#include "progressringshowcasewidget.h"
+#include "pageprogressring.h"
 
 #include "fluentui3styleproperties.h"
 
@@ -84,7 +84,7 @@ void setRingTrackColor(QWidget *widget, const QColor &color)
 
 } // namespace
 
-ProgressRingShowcaseWidget::ProgressRingShowcaseWidget(QWidget *parent)
+PageProgressRing::PageProgressRing(QWidget *parent)
     : QFrame(parent)
 {
     setFrameShape(QFrame::StyledPanel);
@@ -383,7 +383,7 @@ ProgressRingShowcaseWidget::ProgressRingShowcaseWidget(QWidget *parent)
                 setRingTrackColor(previewRing, QColor(Qt::gray));
                 ringColorButton->setSelectedColor(ringAccentColor(previewRing));
                 trackColorButton->setSelectedColor(QColor(Qt::gray));
-                titleEdit->setText(ProgressRingShowcaseWidget::tr("已完成"));
+                titleEdit->setText(PageProgressRing::tr("已完成"));
                 formatEdit->setText(QStringLiteral("%p%"));
                 titleFontSizeSpin->setValue(12);
                 valueFontSizeSpin->setValue(24);
@@ -395,7 +395,7 @@ ProgressRingShowcaseWidget::ProgressRingShowcaseWidget(QWidget *parent)
                 valueFont.setPixelSize(24);
                 valueFont.setWeight(QFont::DemiBold);
                 previewRing->setValueFont(valueFont);
-                previewRing->setTitle(ProgressRingShowcaseWidget::tr("已完成"));
+                previewRing->setTitle(PageProgressRing::tr("已完成"));
                 previewRing->setFormat(QStringLiteral("%p%"));
                 previewRing->setTextSpacing(4);
                 previewRing->setTitleColor(QColor());

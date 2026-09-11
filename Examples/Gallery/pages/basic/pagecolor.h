@@ -2,10 +2,10 @@
 
 #include <QFrame>
 
-class ColorShowcaseWidget : public QFrame
+class PageColor : public QFrame
 {
     Q_OBJECT
 
 public:
-    explicit ColorShowcaseWidget(QWidget *parent = nullptr);
+    explicit PageColor(QWidget *parent = nullptr);
 };

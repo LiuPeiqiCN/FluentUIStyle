@@ -9,13 +9,13 @@ class QTimer;
 /**
  * @brief ExSpectrumWidget 演示页（Qt 5 Gallery 使用模拟 PCM）。
  */
-class SpectrumShowcaseWidget : public QFrame
+class PageSpectrum : public QFrame
 {
     Q_OBJECT
 
 public:
-    explicit SpectrumShowcaseWidget(QWidget *parent = nullptr);
-    ~SpectrumShowcaseWidget() override;
+    explicit PageSpectrum(QWidget *parent = nullptr);
+    ~PageSpectrum() override;
 
 private slots:
     void feedSimulatedAudio();

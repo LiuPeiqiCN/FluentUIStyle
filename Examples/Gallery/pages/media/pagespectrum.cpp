@@ -1,4 +1,4 @@
-#include "spectrumshowcasewidget.h"
+#include "pagespectrum.h"
 
 #include "exspectrumwidget.h"
 #include "sinewavegenerator.h"
@@ -7,7 +7,7 @@
 #include <QTimer>
 #include <QVBoxLayout>
 
-SpectrumShowcaseWidget::SpectrumShowcaseWidget(QWidget *parent)
+PageSpectrum::PageSpectrum(QWidget *parent)
     : QFrame(parent)
 {
     setFrameShape(QFrame::StyledPanel);
@@ -34,13 +34,13 @@ SpectrumShowcaseWidget::SpectrumShowcaseWidget(QWidget *parent)
 
     m_feedTimer = new QTimer(this);
     m_feedTimer->setTimerType(Qt::PreciseTimer);
-    connect(m_feedTimer, &QTimer::timeout, this, &SpectrumShowcaseWidget::feedSimulatedAudio);
+    connect(m_feedTimer, &QTimer::timeout, this, &PageSpectrum::feedSimulatedAudio);
     m_feedTimer->start(ExSpectrumWidget::DefaultRefreshIntervalMs);
 }
 
-SpectrumShowcaseWidget::~SpectrumShowcaseWidget() = default;
+PageSpectrum::~PageSpectrum() = default;
 
-void SpectrumShowcaseWidget::feedSimulatedAudio()
+void PageSpectrum::feedSimulatedAudio()
 {
     if (!m_spectrum || !m_generator)
     {

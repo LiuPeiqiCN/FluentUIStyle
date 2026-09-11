@@ -2,10 +2,10 @@
 
 #include <QFrame>
 
-class BorderBeamShowcaseWidget final : public QFrame
+class PageBorderBeam final : public QFrame
 {
     Q_OBJECT
 
 public:
-    explicit BorderBeamShowcaseWidget( QWidget* parent = nullptr );
+    explicit PageBorderBeam( QWidget* parent = nullptr );
 };

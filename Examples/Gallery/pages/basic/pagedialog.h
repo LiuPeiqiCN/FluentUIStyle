@@ -2,10 +2,10 @@
 
 #include <QFrame>
 
-class DialogShowcaseWidget : public QFrame
+class PageDialog : public QFrame
 {
     Q_OBJECT
 
 public:
-    explicit DialogShowcaseWidget(QWidget *parent = nullptr);
+    explicit PageDialog(QWidget *parent = nullptr);
 };

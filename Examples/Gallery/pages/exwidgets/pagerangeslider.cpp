@@ -1,4 +1,4 @@
-#include "rangeslidershowcasewidget.h"
+#include "pagerangeslider.h"
 
 #include "fluentui3styleproperties.h"
 
@@ -35,7 +35,7 @@ QLabel *makeSectionTitle(const QString &text, QWidget *parent)
 
 } // namespace
 
-RangeSliderShowcaseWidget::RangeSliderShowcaseWidget(QWidget *parent)
+PageRangeSlider::PageRangeSlider(QWidget *parent)
     : QFrame(parent)
 {
     setFrameShape(QFrame::StyledPanel);

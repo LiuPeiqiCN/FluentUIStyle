@@ -4,12 +4,12 @@
 
 class QTableWidget;
 
-class InstalledSoftwareTableWidget : public QObject
+class PageInstalledSoftware : public QObject
 {
     Q_OBJECT
 
 public:
-    explicit InstalledSoftwareTableWidget(QTableWidget *table, QObject *parent = nullptr);
+    explicit PageInstalledSoftware(QTableWidget *table, QObject *parent = nullptr);
 
     void initialize();
 

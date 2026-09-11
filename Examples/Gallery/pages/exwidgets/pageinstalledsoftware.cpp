@@ -1,4 +1,4 @@
-#include "installedsoftwaretablewidget.h"
+#include "pageinstalledsoftware.h"
 
 #include <algorithm>
 
@@ -253,13 +253,13 @@ QList<InstalledSoftwareInfo> queryInstalledSoftwareList()
 
 } // namespace
 
-InstalledSoftwareTableWidget::InstalledSoftwareTableWidget(QTableWidget *table, QObject *parent)
+PageInstalledSoftware::PageInstalledSoftware(QTableWidget *table, QObject *parent)
     : QObject(parent)
     , m_table(table)
 {
 }
 
-void InstalledSoftwareTableWidget::initialize()
+void PageInstalledSoftware::initialize()
 {
     if (!m_table)
     {

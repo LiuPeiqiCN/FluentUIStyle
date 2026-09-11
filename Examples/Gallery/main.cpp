@@ -23,7 +23,6 @@
 #include <QPropertyAnimation>
 #include <QStyleHints>
 
-
 #include "diagnostics/crashdump.h"
 #include "mainwindow.h"
 
@@ -52,11 +51,13 @@ int main(int argc, char *argv[]) {
   }
 
   qDebug() << QStyleFactory::keys();
-  // qApp->setProperty("secondLevelRoundingRadius", 0);
+  // qApp->setProperty("secondLevelRoundingRadius", 3);
   qApp->setProperty(
       "_q_scrollHint_center",
       false); // 控制QComboBox弹出位置，默认false，true则在QComboBox中心位置弹出
   qApp->setProperty("_q_themestyle", 0); // 控制配色方案，默认0-Fluent, 1-Teams
+  // qApp->setProperty("comboBoxPopupDropDownAnimationEnabled", false);
+  // qApp->setProperty("menuPopupAnimationEnabled", false);
 
 #ifdef Q_OS_ANDROID
   // 全局禁用所有 QComboBox 的展开动画

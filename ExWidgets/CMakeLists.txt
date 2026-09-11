@@ -1,7 +1,8 @@
-file(GLOB EXWIDGETS_SOURCES CONFIGURE_DEPENDS
+file(GLOB_RECURSE EXWIDGETS_SOURCES CONFIGURE_DEPENDS
     "*.cpp"
     "*.h"
 )
+list(FILTER EXWIDGETS_SOURCES EXCLUDE REGEX "^${CMAKE_CURRENT_SOURCE_DIR}/frameless/")
 
 option(EXWIDGETS_BUILD_FRAMELESS
     "Build the optional QWindowKit-based frameless window component"
@@ -82,6 +83,12 @@ target_compile_definitions(ExWidgets PRIVATE EXWIDGETS_LIBRARY)
 
 target_include_directories(ExWidgets PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/navigation>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/dialogs>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/gauges>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/color>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/controls>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/media>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../FluentUI3Colors>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../fluentui3style>
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/ExWidgets>
@@ -99,8 +106,6 @@ target_link_libraries(ExWidgets PUBLIC
 )
 
 target_link_libraries(ExWidgets PRIVATE kissfft)
-
-
 
 set_target_properties(ExWidgets PROPERTIES
     DEBUG_POSTFIX d

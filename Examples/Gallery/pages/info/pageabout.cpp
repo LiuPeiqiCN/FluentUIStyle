@@ -1,4 +1,4 @@
-#include "aboutprojectwidget.h"
+#include "pageabout.h"
 
 #include <QLabel>
 #include <QFrame>
@@ -7,7 +7,7 @@
 #include <QString>
 #include <QVBoxLayout>
 
-AboutProjectWidget::AboutProjectWidget(QWidget *parent)
+PageAbout::PageAbout(QWidget *parent)
     : QFrame(parent)
 {
     setFrameShape(QFrame::StyledPanel);

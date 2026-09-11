@@ -1,4 +1,4 @@
-#include "tabshowcasewidget.h"
+#include "pagetab.h"
 
 #include "font-icon/fonticon.h"
 #include "fluentui3styleproperties.h"
@@ -40,7 +40,7 @@ static void styleTabPageLabel(QLabel *page, const QColor &background)
     page->setPalette(pal);
 }
 
-TabShowcaseWidget::TabShowcaseWidget(QWidget *parent)
+PageTab::PageTab(QWidget *parent)
     : QWidget(parent)
 {
     QVBoxLayout *mainLayout = new QVBoxLayout(this);
@@ -65,7 +65,7 @@ TabShowcaseWidget::TabShowcaseWidget(QWidget *parent)
     mainLayout->addStretch();
 }
 
-void TabShowcaseWidget::setupPivotTabs(QVBoxLayout *mainLayout)
+void PageTab::setupPivotTabs(QVBoxLayout *mainLayout)
 {
     QWidget *pivotWidget = createTabWidgetContainer();
     QVBoxLayout *pivotLayout = static_cast<QVBoxLayout *>(pivotWidget->layout());
@@ -78,7 +78,7 @@ void TabShowcaseWidget::setupPivotTabs(QVBoxLayout *mainLayout)
     mainLayout->addWidget(pivotWidget, 1);
 }
 
-void TabShowcaseWidget::setupSegmentedTabs(QVBoxLayout *mainLayout)
+void PageTab::setupSegmentedTabs(QVBoxLayout *mainLayout)
 {
     QWidget *segmentedWidget = createTabWidgetContainer();
     QVBoxLayout *segmentedLayout = static_cast<QVBoxLayout *>(segmentedWidget->layout());
@@ -202,7 +202,7 @@ void TabShowcaseWidget::setupSegmentedTabs(QVBoxLayout *mainLayout)
     mainLayout->addWidget(segmentedWidget, 1);
 }
 
-void TabShowcaseWidget::setupPillTabs(QVBoxLayout *mainLayout)
+void PageTab::setupPillTabs(QVBoxLayout *mainLayout)
 {
     QWidget *pillWidget = createTabWidgetContainer();
     QVBoxLayout *pillLayout = static_cast<QVBoxLayout *>(pillWidget->layout());
@@ -228,7 +228,7 @@ void TabShowcaseWidget::setupPillTabs(QVBoxLayout *mainLayout)
     mainLayout->addWidget(pillWidget, 1);
 }
 
-void TabShowcaseWidget::setupCapsuleTabs(QVBoxLayout *mainLayout)
+void PageTab::setupCapsuleTabs(QVBoxLayout *mainLayout)
 {
     QWidget *capsuleWidget = createTabWidgetContainer();
     QVBoxLayout *capsuleLayout = static_cast<QVBoxLayout *>(capsuleWidget->layout());
@@ -272,7 +272,7 @@ void TabShowcaseWidget::setupCapsuleTabs(QVBoxLayout *mainLayout)
     mainLayout->addWidget(capsuleWidget, 1);
 }
 
-void TabShowcaseWidget::setupNavigationTabs(QVBoxLayout *mainLayout)
+void PageTab::setupNavigationTabs(QVBoxLayout *mainLayout)
 {
     QWidget *navigationWidget = createTabWidgetContainer();
     QVBoxLayout *navigationLayout = static_cast<QVBoxLayout *>(navigationWidget->layout());
@@ -329,7 +329,7 @@ void TabShowcaseWidget::setupNavigationTabs(QVBoxLayout *mainLayout)
     mainLayout->addWidget(navigationWidget, 1);
 }
 
-QWidget *TabShowcaseWidget::createTabWidgetContainer()
+QWidget *PageTab::createTabWidgetContainer()
 {
     QWidget *widget = new QWidget();
     widget->setProperty("isCard", true);
@@ -342,7 +342,7 @@ QWidget *TabShowcaseWidget::createTabWidgetContainer()
     return widget;
 }
 
-void TabShowcaseWidget::addTabBarSection(QVBoxLayout *layout,
+void PageTab::addTabBarSection(QVBoxLayout *layout,
                                          const char *sectionId,
                                          const QString &title,
                                          const QString &description,
@@ -393,7 +393,7 @@ void TabShowcaseWidget::addTabBarSection(QVBoxLayout *layout,
     }
 }
 
-void TabShowcaseWidget::updateTabIcons()
+void PageTab::updateTabIcons()
 {
     const QColor iconColor = QApplication::palette().color(QPalette::WindowText);
 

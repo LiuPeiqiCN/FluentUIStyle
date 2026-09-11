@@ -2,10 +2,10 @@
 
 #include <QFrame>
 
-class LiquidGaugeShowcaseWidget final : public QFrame
+class PageLiquidGauge final : public QFrame
 {
     Q_OBJECT
 
 public:
-    explicit LiquidGaugeShowcaseWidget( QWidget* parent = nullptr );
+    explicit PageLiquidGauge( QWidget* parent = nullptr );
 };

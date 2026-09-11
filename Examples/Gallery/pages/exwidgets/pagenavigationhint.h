@@ -9,11 +9,11 @@ class ExTeachingTip;
 class QLabel;
 class QScrollArea;
 
-class NavigationHintShowcaseWidget final : public QFrame
+class PageNavigationHint final : public QFrame
 {
     Q_OBJECT
 public:
-    explicit NavigationHintShowcaseWidget( QWidget* parent = nullptr );
+    explicit PageNavigationHint( QWidget* parent = nullptr );
 protected:
     void hideEvent( QHideEvent* event ) override;
 private:

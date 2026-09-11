@@ -1,4 +1,4 @@
-#include "borderbeamshowcasewidget.h"
+#include "pageborderbeam.h"
 
 #include <exborderbeam.h>
 #include <exborderbeambutton.h>
@@ -78,7 +78,7 @@ ExBorderBeam* makeBeamSample( QWidget* parent,
 
 } // namespace
 
-BorderBeamShowcaseWidget::BorderBeamShowcaseWidget( QWidget* parent )
+PageBorderBeam::PageBorderBeam( QWidget* parent )
     : QFrame( parent )
 {
     setFrameShape( QFrame::StyledPanel );

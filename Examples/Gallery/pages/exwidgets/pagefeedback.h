@@ -5,12 +5,12 @@
 
 class ExInfoBarHost;
 
-class FeedbackShowcaseWidget final : public QFrame
+class PageFeedback final : public QFrame
 {
     Q_OBJECT
 
 public:
-    explicit FeedbackShowcaseWidget( QWidget* parent = nullptr );
+    explicit PageFeedback( QWidget* parent = nullptr );
 
 private:
     QPointer<ExInfoBarHost> m_infoBarHost;

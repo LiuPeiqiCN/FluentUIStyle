@@ -7,22 +7,22 @@ file(GLOB_RECURSE GALLERY_SOURCES CONFIGURE_DEPENDS
 
 # Remove conditional sources so they aren't compiled unless their conditions are met
 list(REMOVE_ITEM GALLERY_SOURCES
-    "${CMAKE_CURRENT_SOURCE_DIR}/applanguage.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/applanguage.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/core/applanguage.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/core/applanguage.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/translations/i18n_embed.qrc"
-    "${CMAKE_CURRENT_SOURCE_DIR}/spectrumshowcasewidget.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/spectrumshowcasewidget.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/sinewavegenerator.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/sinewavegenerator.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/pages/media/pagespectrum.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/pages/media/pagespectrum.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/pages/media/sinewavegenerator.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/pages/media/sinewavegenerator.h"
 )
 
 if(WIN32)
     list(APPEND GALLERY_SOURCES
-        applanguage.cpp
-        applanguage.h
+        core/applanguage.cpp
+        core/applanguage.h
         translations/i18n_embed.qrc
-        appicon.rc
-        appicon.ico
+        resources/appicon.rc
+        resources/appicon.ico
     )
 endif()
 
@@ -62,6 +62,21 @@ else()
     )
 endif()
 
+target_include_directories(Gallery PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/core
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/diagnostics
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/systemresources
+    ${CMAKE_CURRENT_SOURCE_DIR}/pages/basic
+    ${CMAKE_CURRENT_SOURCE_DIR}/pages/gauges
+    ${CMAKE_CURRENT_SOURCE_DIR}/pages/media
+    ${CMAKE_CURRENT_SOURCE_DIR}/pages/timeline
+    ${CMAKE_CURRENT_SOURCE_DIR}/pages/exwidgets
+    ${CMAKE_CURRENT_SOURCE_DIR}/pages/info
+    ${CMAKE_CURRENT_SOURCE_DIR}/resources
+    ${CMAKE_CURRENT_SOURCE_DIR}/font-icon
+)
+
 if(WIN32)
     target_compile_definitions(Gallery PRIVATE GALLERY_ENABLE_I18N)
     target_link_libraries(Gallery PRIVATE dbghelp iphlpapi pdh)
@@ -94,10 +109,10 @@ if(QT_VERSION_MAJOR GREATER_EQUAL 6 AND NOT ANDROID)
     )
 else()
     target_sources(Gallery PRIVATE
-        spectrumshowcasewidget.cpp
-        spectrumshowcasewidget.h
-        sinewavegenerator.cpp
-        sinewavegenerator.h
+        pages/media/pagespectrum.cpp
+        pages/media/pagespectrum.h
+        pages/media/sinewavegenerator.cpp
+        pages/media/sinewavegenerator.h
     )
 endif()
 

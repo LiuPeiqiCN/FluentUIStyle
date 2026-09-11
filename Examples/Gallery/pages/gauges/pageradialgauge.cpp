@@ -1,4 +1,4 @@
-#include "radialgaugeshowcasewidget.h"
+#include "pageradialgauge.h"
 
 #include "fluentui3styleproperties.h"
 
@@ -447,7 +447,7 @@ void configureEChartsBarometerGauge( ExRadialGauge* gauge )
 
 }
 
-RadialGaugeShowcaseWidget::RadialGaugeShowcaseWidget( QWidget* parent )
+PageRadialGauge::PageRadialGauge( QWidget* parent )
     : QFrame( parent )
 {
     setFrameShape( QFrame::StyledPanel );
@@ -869,9 +869,9 @@ RadialGaugeShowcaseWidget::RadialGaugeShowcaseWidget( QWidget* parent )
     const auto makeCapStyleCombo = [propertiesCard]( Qt::PenCapStyle currentStyle )
     {
         auto* combo = new ExComboBox( propertiesCard );
-        combo->addItem( RadialGaugeShowcaseWidget::tr( "FlatCap" ), Qt::FlatCap );
-        combo->addItem( RadialGaugeShowcaseWidget::tr( "SquareCap" ), Qt::SquareCap );
-        combo->addItem( RadialGaugeShowcaseWidget::tr( "RoundCap" ), Qt::RoundCap );
+        combo->addItem( PageRadialGauge::tr( "FlatCap" ), Qt::FlatCap );
+        combo->addItem( PageRadialGauge::tr( "SquareCap" ), Qt::SquareCap );
+        combo->addItem( PageRadialGauge::tr( "RoundCap" ), Qt::RoundCap );
         combo->setCurrentIndex( combo->findData( currentStyle ) );
         return combo;
     };

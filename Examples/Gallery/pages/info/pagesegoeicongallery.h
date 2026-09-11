@@ -7,12 +7,12 @@
 class QLineEdit;
 class QTableWidget;
 
-class SegoeIconGalleryWidget : public QFrame
+class PageSegoeIconGallery : public QFrame
 {
     Q_OBJECT
 
 public:
-    explicit SegoeIconGalleryWidget(QWidget *parent = nullptr);
+    explicit PageSegoeIconGallery(QWidget *parent = nullptr);
 
 private:
     struct IconEntry

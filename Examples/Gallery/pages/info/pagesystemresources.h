@@ -20,12 +20,12 @@ class QShowEvent;
 class SystemResourceProvider;
 struct SystemResourceSnapshot;
 
-class SystemResourcesWidget final : public QFrame
+class PageSystemResources final : public QFrame
 {
     Q_OBJECT
 
 public:
-    explicit SystemResourcesWidget( QWidget* parent = nullptr );
+    explicit PageSystemResources( QWidget* parent = nullptr );
 
 protected:
     void showEvent( QShowEvent* event ) override;

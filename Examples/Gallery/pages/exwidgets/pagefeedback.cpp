@@ -1,4 +1,4 @@
-#include "feedbackshowcasewidget.h"
+#include "pagefeedback.h"
 
 #include <exexpander.h>
 #include <exinfobar.h>
@@ -84,7 +84,7 @@ QWidget* createHeaderWidget( const QString& iconGlyph,
 }
 } // namespace
 
-FeedbackShowcaseWidget::FeedbackShowcaseWidget( QWidget* parent )
+PageFeedback::PageFeedback( QWidget* parent )
     : QFrame( parent )
 {
     m_infoBarHost = ExInfoBarHost::defaultHost();

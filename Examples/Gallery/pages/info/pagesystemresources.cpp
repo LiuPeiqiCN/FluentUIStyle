@@ -1,4 +1,4 @@
-#include "systemresourceswidget.h"
+#include "pagesystemresources.h"
 
 #include "systemresources/systemresourceprovider.h"
 
@@ -123,7 +123,7 @@ quint64 networkScaleForRate( quint64 bytesPerSecond )
 }
 }
 
-SystemResourcesWidget::SystemResourcesWidget( QWidget* parent )
+PageSystemResources::PageSystemResources( QWidget* parent )
     : QFrame( parent )
     , m_provider( new SystemResourceProvider( this ) )
 {
@@ -319,7 +319,7 @@ SystemResourcesWidget::SystemResourcesWidget( QWidget* parent )
     connect( m_provider,
              &SystemResourceProvider::snapshotReady,
              this,
-             &SystemResourcesWidget::applySnapshot );
+             &PageSystemResources::applySnapshot );
     connect( m_intervalCombo,
              qOverload<int>( &QComboBox::currentIndexChanged ),
              this,
@@ -350,7 +350,7 @@ SystemResourcesWidget::SystemResourcesWidget( QWidget* parent )
                          ExTimelineEvent::Completed );
 }
 
-void SystemResourcesWidget::showEvent( QShowEvent* event )
+void PageSystemResources::showEvent( QShowEvent* event )
 {
     QFrame::showEvent( event );
     if ( !m_paused )
@@ -359,13 +359,13 @@ void SystemResourcesWidget::showEvent( QShowEvent* event )
     }
 }
 
-void SystemResourcesWidget::hideEvent( QHideEvent* event )
+void PageSystemResources::hideEvent( QHideEvent* event )
 {
     m_provider->stop();
     QFrame::hideEvent( event );
 }
 
-void SystemResourcesWidget::applySnapshot( const SystemResourceSnapshot& snapshot )
+void PageSystemResources::applySnapshot( const SystemResourceSnapshot& snapshot )
 {
     if ( !snapshot.available )
     {
@@ -458,7 +458,7 @@ void SystemResourcesWidget::applySnapshot( const SystemResourceSnapshot& snapsho
     }
 }
 
-void SystemResourcesWidget::updateNetworkGauge( quint64 receivedBytesPerSecond,
+void PageSystemResources::updateNetworkGauge( quint64 receivedBytesPerSecond,
                                                 quint64 sentBytesPerSecond )
 {
     const quint64 peakRate = qMax( receivedBytesPerSecond, sentBytesPerSecond );
@@ -521,7 +521,7 @@ void SystemResourcesWidget::updateNetworkGauge( quint64 receivedBytesPerSecond,
     }
 }
 
-void SystemResourcesWidget::synchronizeDiskItems( const SystemResourceSnapshot& snapshot )
+void PageSystemResources::synchronizeDiskItems( const SystemResourceSnapshot& snapshot )
 {
     constexpr int maximumVisibleDisks = 4;
     for ( const SystemDiskSnapshot& disk : snapshot.disks )
@@ -620,7 +620,7 @@ void SystemResourcesWidget::synchronizeDiskItems( const SystemResourceSnapshot& 
     m_diskDetails->setText( activityText + QStringLiteral( " · " ) + capacityText );
 }
 
-void SystemResourcesWidget::updateAlert( const QString& key,
+void PageSystemResources::updateAlert( const QString& key,
                                          bool active,
                                          const QString& title,
                                          const QString& description )
@@ -644,7 +644,7 @@ void SystemResourcesWidget::updateAlert( const QString& key,
     }
 }
 
-void SystemResourcesWidget::appendTimelineEvent( const QString& title,
+void PageSystemResources::appendTimelineEvent( const QString& title,
                                                  const QString& description,
                                                  int status )
 {
@@ -658,7 +658,7 @@ void SystemResourcesWidget::appendTimelineEvent( const QString& title,
     }
 }
 
-int SystemResourcesWidget::samplingInterval() const
+int PageSystemResources::samplingInterval() const
 {
     return m_intervalCombo->currentData().toInt();
 }

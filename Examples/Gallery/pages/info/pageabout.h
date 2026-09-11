@@ -2,11 +2,11 @@
 
 #include <QFrame>
 
-class AboutProjectWidget : public QFrame
+class PageAbout : public QFrame
 {
     Q_OBJECT
 
 public:
-    explicit AboutProjectWidget(QWidget *parent = nullptr);
+    explicit PageAbout(QWidget *parent = nullptr);
 };
 

@@ -6,12 +6,12 @@ class ExTabWidget;
 class QTabBar;
 class QVBoxLayout;
 
-class TabShowcaseWidget : public QWidget
+class PageTab : public QWidget
 {
     Q_OBJECT
 
 public:
-    explicit TabShowcaseWidget(QWidget *parent = nullptr);
+    explicit PageTab(QWidget *parent = nullptr);
     void updateTabIcons();
 
 private:

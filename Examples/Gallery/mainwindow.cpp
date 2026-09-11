@@ -4,21 +4,21 @@
 //=============================================================================
 
 #include "mainwindow.h"
-#include "borderbeamshowcasewidget.h"
-#include "changelogtimelinewidget.h"
-#include "liquidgaugeshowcasewidget.h"
-#include "progressringshowcasewidget.h"
-#include "radialgaugeshowcasewidget.h"
-#include "systemresourceswidget.h"
-#include "timelineshowcasewidget.h"
-#include "audiolevelmetershowcasewidget.h"
-#include "feedbackshowcasewidget.h"
-#include "navigationhintshowcasewidget.h"
+#include "pageborderbeam.h"
+#include "pagechangelog.h"
+#include "pageliquidgauge.h"
+#include "pageprogressring.h"
+#include "pageradialgauge.h"
+#include "pagesystemresources.h"
+#include "pagetimeline.h"
+#include "pageaudiolevelmeter.h"
+#include "pagefeedback.h"
+#include "pagenavigationhint.h"
 
 #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0) && !defined(Q_OS_ANDROID)
 #include "audiomaticplayerwidget.h"
 #else
-#include "spectrumshowcasewidget.h"
+#include "pagespectrum.h"
 #endif
 
 #ifdef GALLERY_ENABLE_I18N
@@ -106,13 +106,13 @@
 #include <exmessagebox.h>
 #include <exwinuinavigationview.h>
 #include "font-icon/fonticon.h"
-#include "segoeicongallerywidget.h"
-#include "aboutprojectwidget.h"
-#include "installedsoftwaretablewidget.h"
-#include "tabshowcasewidget.h"
-#include "dialogshowcasewidget.h"
-#include "colorshowcasewidget.h"
-#include "rangeslidershowcasewidget.h"
+#include "pagesegoeicongallery.h"
+#include "pageabout.h"
+#include "pageinstalledsoftware.h"
+#include "pagetab.h"
+#include "pagedialog.h"
+#include "pagecolor.h"
+#include "pagerangeslider.h"
 #include "fluentui3styleproperties.h"
 #ifdef GALLERY_ENABLE_FRAMELESS
 #include <fluenttitlebar.h>
@@ -784,7 +784,7 @@ void MainWindow::initializeComponents()
     // Initialize sub-components
     rebuildMenuAndToolBar();
     initializeNavigationView();
-    m_installedSoftwareTable = new InstalledSoftwareTableWidget(ui->tableWidget, this);
+    m_installedSoftwareTable = new PageInstalledSoftware(ui->tableWidget, this);
     m_installedSoftwareTable->initialize();
 
     // Configure background properties
@@ -1443,7 +1443,7 @@ void MainWindow::setupTabs()
     scrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     scrollArea->viewport()->setAutoFillBackground(false);
     scrollArea->viewport()->setAttribute(Qt::WA_StyledBackground, false);
-    m_tabShowcaseWidget = new TabShowcaseWidget(scrollArea);
+    m_tabShowcaseWidget = new PageTab(scrollArea);
     scrollArea->setWidget(m_tabShowcaseWidget);
     m_tabShowcaseWidget->setAutoFillBackground(false);
     m_tabShowcaseWidget->updateTabIcons();
@@ -1545,7 +1545,7 @@ void MainWindow::setupSegoeIconGalleryPage()
         return;
     }
 
-    SegoeIconGalleryWidget *galleryWidget = new SegoeIconGalleryWidget(ui->stackedWidget);
+    PageSegoeIconGallery *galleryWidget = new PageSegoeIconGallery(ui->stackedWidget);
     galleryWidget->setObjectName(QStringLiteral("pageSegoeIconGallery"));
     ui->stackedWidget->addWidget(galleryWidget);
 }
@@ -1557,7 +1557,7 @@ void MainWindow::setupProgressRingPage()
         return;
     }
 
-    auto *page = new ProgressRingShowcaseWidget(ui->stackedWidget);
+    auto *page = new PageProgressRing(ui->stackedWidget);
     page->setObjectName(QStringLiteral("pageProgressRing"));
     ui->stackedWidget->addWidget(page);
 }
@@ -1569,7 +1569,7 @@ void MainWindow::setupAboutPage()
         return;
     }
 
-    AboutProjectWidget *aboutPage = new AboutProjectWidget(ui->stackedWidget);
+    PageAbout *aboutPage = new PageAbout(ui->stackedWidget);
     aboutPage->setObjectName(QStringLiteral("pageAboutProject"));
     ui->stackedWidget->addWidget(aboutPage);
 }
@@ -1580,7 +1580,7 @@ void MainWindow::setupDialogsPage()
     {
         return;
     }
-    auto *page = new DialogShowcaseWidget(ui->stackedWidget);
+    auto *page = new PageDialog(ui->stackedWidget);
     page->setObjectName(QStringLiteral("pageDialogs"));
     ui->stackedWidget->addWidget(page);
 }
@@ -1591,7 +1591,7 @@ void MainWindow::setupChangelogTimelinePage()
     {
         return;
     }
-    auto *page = new ChangelogTimelineWidget(ui->stackedWidget);
+    auto *page = new PageChangelog(ui->stackedWidget);
     page->setObjectName(QStringLiteral("pageChangelogTimeline"));
     ui->stackedWidget->addWidget(page);
 }
@@ -1602,7 +1602,7 @@ void MainWindow::setupSystemResourcesPage()
     {
         return;
     }
-    auto *page = new SystemResourcesWidget(ui->stackedWidget);
+    auto *page = new PageSystemResources(ui->stackedWidget);
     page->setObjectName(QStringLiteral("pageSystemResources"));
     ui->stackedWidget->addWidget(page);
 }
@@ -1613,7 +1613,7 @@ void MainWindow::setupColorPickerPage()
     {
         return;
     }
-    auto *page = new ColorShowcaseWidget(ui->stackedWidget);
+    auto *page = new PageColor(ui->stackedWidget);
     page->setObjectName(QStringLiteral("pageColorPicker"));
     ui->stackedWidget->addWidget(page);
 }
@@ -1625,35 +1625,35 @@ void MainWindow::setupExWidgetsPages()
         return;
     }
 
-    auto *rangeSliderPage = new RangeSliderShowcaseWidget(ui->stackedWidget);
+    auto *rangeSliderPage = new PageRangeSlider(ui->stackedWidget);
     rangeSliderPage->setObjectName(QStringLiteral("pageExRangeSlider"));
     ui->stackedWidget->addWidget(rangeSliderPage);
 
-    auto *borderBeamPage = new BorderBeamShowcaseWidget(ui->stackedWidget);
+    auto *borderBeamPage = new PageBorderBeam(ui->stackedWidget);
     borderBeamPage->setObjectName(QStringLiteral("pageExBorderBeam"));
     ui->stackedWidget->addWidget(borderBeamPage);
 
-    auto *audioLevelMeterPage = new AudioLevelMeterShowcaseWidget(ui->stackedWidget);
+    auto *audioLevelMeterPage = new PageAudioLevelMeter(ui->stackedWidget);
     audioLevelMeterPage->setObjectName(QStringLiteral("pageExAudioLevelMeter"));
     ui->stackedWidget->addWidget(audioLevelMeterPage);
 
-    auto *radialGaugePage = new RadialGaugeShowcaseWidget(ui->stackedWidget);
+    auto *radialGaugePage = new PageRadialGauge(ui->stackedWidget);
     radialGaugePage->setObjectName(QStringLiteral("pageExRadialGauge"));
     ui->stackedWidget->addWidget(radialGaugePage);
 
-    auto *liquidGaugePage = new LiquidGaugeShowcaseWidget(ui->stackedWidget);
+    auto *liquidGaugePage = new PageLiquidGauge(ui->stackedWidget);
     liquidGaugePage->setObjectName(QStringLiteral("pageExLiquidGauge"));
     ui->stackedWidget->addWidget(liquidGaugePage);
 
-    auto *timelinePage = new TimelineShowcaseWidget(ui->stackedWidget);
+    auto *timelinePage = new PageTimeline(ui->stackedWidget);
     timelinePage->setObjectName(QStringLiteral("pageExTimeline"));
     ui->stackedWidget->addWidget(timelinePage);
 
-    auto *feedbackPage = new FeedbackShowcaseWidget(ui->stackedWidget);
+    auto *feedbackPage = new PageFeedback(ui->stackedWidget);
     feedbackPage->setObjectName(QStringLiteral("pageExFeedback"));
     ui->stackedWidget->addWidget(feedbackPage);
 
-    auto *navigationHintPage = new NavigationHintShowcaseWidget(ui->stackedWidget);
+    auto *navigationHintPage = new PageNavigationHint(ui->stackedWidget);
     navigationHintPage->setObjectName(QStringLiteral("pageExNavigationHint"));
     ui->stackedWidget->addWidget(navigationHintPage);
 }
@@ -1675,7 +1675,7 @@ void MainWindow::setupAudiomaticPlayerPage()
 #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0) && !defined(Q_OS_ANDROID)
     pageLayout->addWidget(new AudiomaticPlayerWidget(m_audiomaticPlayerPage));
 #else
-    pageLayout->addWidget(new SpectrumShowcaseWidget(m_audiomaticPlayerPage));
+    pageLayout->addWidget(new PageSpectrum(m_audiomaticPlayerPage));
 #endif
 
     ui->stackedWidget->addWidget(m_audiomaticPlayerPage);

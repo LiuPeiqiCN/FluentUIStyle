@@ -1,4 +1,4 @@
-#include "timelineshowcasewidget.h"
+#include "pagetimeline.h"
 
 #include "fluentui3styleproperties.h"
 
@@ -120,7 +120,7 @@ QWidget* makeTimelineSample( const QString& title,
 }
 }
 
-TimelineShowcaseWidget::TimelineShowcaseWidget( QWidget* parent )
+PageTimeline::PageTimeline( QWidget* parent )
     : QFrame( parent )
 {
     setFrameShape( QFrame::StyledPanel );

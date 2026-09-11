@@ -2,10 +2,10 @@
 
 #include <QFrame>
 
-class TimelineShowcaseWidget : public QFrame
+class PageTimeline : public QFrame
 {
     Q_OBJECT
 
 public:
-    explicit TimelineShowcaseWidget( QWidget* parent = nullptr );
+    explicit PageTimeline( QWidget* parent = nullptr );
 };

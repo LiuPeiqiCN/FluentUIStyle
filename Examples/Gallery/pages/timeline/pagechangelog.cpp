@@ -1,4 +1,4 @@
-#include "changelogtimelinewidget.h"
+#include "pagechangelog.h"
 
 #include <extimeline.h>
 
@@ -97,7 +97,7 @@ QList<ChangelogEntry> loadChangelogEntries()
 }
 }
 
-ChangelogTimelineWidget::ChangelogTimelineWidget( QWidget* parent )
+PageChangelog::PageChangelog( QWidget* parent )
     : QFrame( parent )
 {
     setFrameShape( QFrame::StyledPanel );

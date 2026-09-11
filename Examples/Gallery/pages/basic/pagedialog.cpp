@@ -1,4 +1,4 @@
-#include "dialogshowcasewidget.h"
+#include "pagedialog.h"
 #include "qdebug.h"
 
 #include <QCoreApplication>
@@ -63,7 +63,7 @@ namespace
     }
 } // namespace
 
-DialogShowcaseWidget::DialogShowcaseWidget(QWidget *parent)
+PageDialog::PageDialog(QWidget *parent)
     : QFrame(parent)
 {
     setFrameShape(QFrame::StyledPanel);

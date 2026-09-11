@@ -1,4 +1,4 @@
-#include "audiolevelmetershowcasewidget.h"
+#include "pageaudiolevelmeter.h"
 
 #include <exaudiolevelmeter.h>
 #include <excolorpickerbutton.h>
@@ -120,7 +120,7 @@ qreal pcmLevelDecibels( const QByteArray& pcmData )
 
 } // namespace
 
-AudioLevelMeterShowcaseWidget::AudioLevelMeterShowcaseWidget( QWidget* parent )
+PageAudioLevelMeter::PageAudioLevelMeter( QWidget* parent )
     : QFrame( parent )
 {
     setFrameShape( QFrame::StyledPanel );
@@ -650,7 +650,7 @@ AudioLevelMeterShowcaseWidget::AudioLevelMeterShowcaseWidget( QWidget* parent )
     scrollArea->setWidget( content );
 }
 
-void AudioLevelMeterShowcaseWidget::changeEvent( QEvent* event )
+void PageAudioLevelMeter::changeEvent( QEvent* event )
 {
     QFrame::changeEvent( event );
     if ( event->type() != QEvent::PaletteChange && event->type() != QEvent::ApplicationPaletteChange )

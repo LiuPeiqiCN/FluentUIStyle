@@ -1,4 +1,4 @@
-#include "colorshowcasewidget.h"
+#include "pagecolor.h"
 
 #include <excolorpicker.h>
 #include <excolorpickerbutton.h>
@@ -42,7 +42,7 @@ namespace
     }
 } // namespace
 
-ColorShowcaseWidget::ColorShowcaseWidget(QWidget *parent)
+PageColor::PageColor(QWidget *parent)
     : QFrame(parent)
 {
     setFrameShape(QFrame::StyledPanel);

@@ -14,8 +14,8 @@ class ExWinUINavigationView;
 class ExStackedWidget;
 class ExComboBox;
 class QTreeWidgetItem;
-class TabShowcaseWidget;
-class InstalledSoftwareTableWidget;
+class PageTab;
+class PageInstalledSoftware;
 #ifdef GALLERY_ENABLE_FRAMELESS
 class FluentWindowFrame;
 #endif
@@ -135,8 +135,8 @@ private:
     FluentWindowFrame *m_windowFrame{nullptr};
 #endif
 
-    TabShowcaseWidget *m_tabShowcaseWidget{nullptr};
-    InstalledSoftwareTableWidget *m_installedSoftwareTable{nullptr};
+    PageTab *m_tabShowcaseWidget{nullptr};
+    PageInstalledSoftware *m_installedSoftwareTable{nullptr};
     QFrame *m_audiomaticPlayerPage{nullptr};
     ExNavTreeWidget *m_navView{nullptr};
     ExWinUINavigationView *m_winUINavigationView{nullptr};

@@ -1,4 +1,4 @@
-#include "liquidgaugeshowcasewidget.h"
+#include "pageliquidgauge.h"
 
 #include "fluentui3styleproperties.h"
 
@@ -97,7 +97,7 @@ QWidget* makePropertyPage( ExTabWidget* tabWidget, QFormLayout*& form )
 
 } // namespace
 
-LiquidGaugeShowcaseWidget::LiquidGaugeShowcaseWidget( QWidget* parent )
+PageLiquidGauge::PageLiquidGauge( QWidget* parent )
     : QFrame( parent )
 {
     setFrameShape( QFrame::StyledPanel );

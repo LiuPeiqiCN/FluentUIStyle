@@ -2,10 +2,10 @@
 
 #include <QFrame>
 
-class RadialGaugeShowcaseWidget : public QFrame
+class PageRadialGauge : public QFrame
 {
     Q_OBJECT
 
 public:
-    explicit RadialGaugeShowcaseWidget( QWidget* parent = nullptr );
+    explicit PageRadialGauge( QWidget* parent = nullptr );
 };

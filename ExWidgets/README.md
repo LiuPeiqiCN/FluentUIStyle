@@ -423,7 +423,7 @@ Qt 侧边界与生命周期：
 
 Gallery 的 BreadcrumbBar / TeachingTip 页面下方提供“分步操作引导”：点击“开始引导 / 重新开始”，依次介绍输出设备、输出音量和应用配置。示例只修改页面中的演示数据，不修改系统设置。
 
-实现见 `Examples/Gallery/navigationhintshowcasewidget.cpp` 的 `showTourStep()` 和 `stopTour()`：
+实现见 `Examples/Gallery/pagenavigationhint.cpp` 的 `showTourStep()` 和 `stopTour()`：
 
 - 用步骤列表保存目标控件、标题和说明，复用一个 `ExTeachingTip`。
 - 在 `actionButtonClick` 中推进步骤；先 `dismiss()`，再滚动目标到可视区、更新内容并 `showAt()`。最后一步将按钮文字改为“完成”。

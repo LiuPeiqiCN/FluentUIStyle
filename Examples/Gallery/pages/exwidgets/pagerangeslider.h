@@ -2,10 +2,10 @@
 
 #include <QFrame>
 
-class RangeSliderShowcaseWidget : public QFrame
+class PageRangeSlider : public QFrame
 {
     Q_OBJECT
 
 public:
-    explicit RangeSliderShowcaseWidget(QWidget *parent = nullptr);
+    explicit PageRangeSlider(QWidget *parent = nullptr);
 };

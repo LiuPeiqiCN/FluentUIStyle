@@ -2,10 +2,10 @@
 
 #include <QFrame>
 
-class ChangelogTimelineWidget : public QFrame
+class PageChangelog : public QFrame
 {
     Q_OBJECT
 
 public:
-    explicit ChangelogTimelineWidget( QWidget* parent = nullptr );
+    explicit PageChangelog( QWidget* parent = nullptr );
 };

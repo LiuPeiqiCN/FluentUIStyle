@@ -1,4 +1,4 @@
-#include "segoeicongallerywidget.h"
+#include "pagesegoeicongallery.h"
 
 #include "font-icon/fonticon.h"
 
@@ -14,7 +14,7 @@
 #include <QTextStream>
 #include <QVBoxLayout>
 
-SegoeIconGalleryWidget::SegoeIconGalleryWidget(QWidget *parent)
+PageSegoeIconGallery::PageSegoeIconGallery(QWidget *parent)
     : QFrame(parent)
 {
     setFrameShape(QFrame::StyledPanel);
@@ -23,7 +23,7 @@ SegoeIconGalleryWidget::SegoeIconGalleryWidget(QWidget *parent)
     populateTable();
 }
 
-void SegoeIconGalleryWidget::initializeUi()
+void PageSegoeIconGallery::initializeUi()
 {
     QVBoxLayout *layout = new QVBoxLayout(this);
     layout->setContentsMargins(9, 9, 9, 9);
@@ -71,7 +71,7 @@ void SegoeIconGalleryWidget::initializeUi()
     layout->addWidget(m_tableWidget, 1);
 }
 
-void SegoeIconGalleryWidget::populateTable(const QString &keyword)
+void PageSegoeIconGallery::populateTable(const QString &keyword)
 {
     const QList<IconEntry> entries = iconEntries();
     const QString filter = keyword.trimmed().toLower();
@@ -131,7 +131,7 @@ void SegoeIconGalleryWidget::populateTable(const QString &keyword)
     }
 }
 
-QList<SegoeIconGalleryWidget::IconEntry> SegoeIconGalleryWidget::iconEntries()
+QList<PageSegoeIconGallery::IconEntry> PageSegoeIconGallery::iconEntries()
 {
     static QList<IconEntry> entries;
     if (!entries.isEmpty())

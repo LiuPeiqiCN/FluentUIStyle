@@ -2,11 +2,11 @@
 
 #include <QFrame>
 
-class ProgressRingShowcaseWidget : public QFrame
+class PageProgressRing : public QFrame
 {
     Q_OBJECT
 
 public:
-    explicit ProgressRingShowcaseWidget(QWidget *parent = nullptr);
+    explicit PageProgressRing(QWidget *parent = nullptr);
 };
 

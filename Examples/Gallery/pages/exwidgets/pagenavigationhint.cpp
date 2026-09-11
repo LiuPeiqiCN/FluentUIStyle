@@ -1,4 +1,4 @@
-#include "navigationhintshowcasewidget.h"
+#include "pagenavigationhint.h"
 
 #include <exbreadcrumbbar.h>
 #include <exteachingtip.h>
@@ -12,7 +12,7 @@
 #include <QSlider>
 #include <QVBoxLayout>
 
-NavigationHintShowcaseWidget::NavigationHintShowcaseWidget( QWidget* parent ) : QFrame( parent )
+PageNavigationHint::PageNavigationHint( QWidget* parent ) : QFrame( parent )
 {
     setFrameShape( QFrame::StyledPanel );
     auto* root = new QVBoxLayout( this );
@@ -225,7 +225,7 @@ NavigationHintShowcaseWidget::NavigationHintShowcaseWidget( QWidget* parent ) : 
     layout->addStretch();
 }
 
-void NavigationHintShowcaseWidget::showTourStep( int index )
+void PageNavigationHint::showTourStep( int index )
 {
     if ( !m_tourTip || !isVisible() || index < 0 || index >= m_tourSteps.size() )
         return;
@@ -252,7 +252,7 @@ void NavigationHintShowcaseWidget::showTourStep( int index )
         stopTour();
 }
 
-void NavigationHintShowcaseWidget::stopTour( bool completed )
+void PageNavigationHint::stopTour( bool completed )
 {
     m_tourStep = -1;
     if ( m_tourTip )
@@ -260,7 +260,7 @@ void NavigationHintShowcaseWidget::stopTour( bool completed )
     m_tourStatus->setText( completed ? tr( "引导已完成，可以重新体验" ) : tr( "引导已退出，可以重新开始" ) );
 }
 
-void NavigationHintShowcaseWidget::hideEvent( QHideEvent* event )
+void PageNavigationHint::hideEvent( QHideEvent* event )
 {
     QFrame::hideEvent( event );
     // 无目标提示不绑定某个按钮，因此由页面明确管理其可见性。

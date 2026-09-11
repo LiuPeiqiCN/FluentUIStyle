@@ -3053,7 +3053,8 @@ void FluentUI3Style::drawPrimitive( PrimitiveElement element, const QStyleOption
                 painter->setPen( winUI3Color( controlStrokePrimary ) );
             }
 
-            drawEffectShadow( painter, shadowRect.toRect(), cBShadowBorderWidth, radius );
+            // drawEffectShadow( painter, shadowRect.toRect(), cBShadowBorderWidth,
+            // radius );
             bool accent = widget && widget->property( ButtonAccentStyleProperty ).toBool();
             if ( accent )
             {
@@ -7958,6 +7959,17 @@ void FluentUI3Style::polish( QWidget* widget )
         widget->installEventFilter( this );
     }
 
+    if ( auto* checkBox = qobject_cast<QCheckBox*>( widget ) )
+    {
+        checkBox->installEventFilter( this );
+        auto& dragState = switchDragStates[ checkBox ];
+        if ( !dragState.destroyedConnection )
+        {
+            dragState.destroyedConnection =
+                connect( checkBox, &QObject::destroyed, this, [ this, checkBox ] { switchDragStates.remove( checkBox ); } );
+        }
+    }
+
     if ( auto* slider = qobject_cast<QSlider*>( widget ) )
     {
         installSliderValueTipHooks( slider );
@@ -8166,6 +8178,12 @@ void FluentUI3Style::unpolish( QWidget* widget )
     {
         widget->removeEventFilter( this );
     }
+    if ( auto* checkBox = qobject_cast<QCheckBox*>( widget ) )
+    {
+        checkBox->removeEventFilter( this );
+        const auto dragState = switchDragStates.take( checkBox );
+        disconnect( dragState.destroyedConnection );
+    }
     if ( auto* slider = qobject_cast<QSlider*>( widget ) )
     {
         hideSliderValueTip( slider );
@@ -8309,7 +8327,8 @@ void FluentUI3Style::updateComboBoxAnimationEffect( QApplication* app )
 //     widget ); scrollarea && !qobject_cast<QGraphicsView*>( widget
 //     )
 // #if QT_CONFIG( mdiarea )
-//                                                                                      && !qobject_cast<QMdiArea*>( widget )
+//                                                                                      && !qobject_cast<QMdiArea*>(
+//                                                                                      widget )
 // #endif
 //     )
 //     {
@@ -8463,25 +8482,29 @@ void FluentUI3Style::drawCheckBox( const QStyleOption* option, QPainter* painter
 
 void FluentUI3Style::drawSwitchButton( const QStyleOption* option, QPainter* painter, const QWidget* widget ) const
 {
-    Q_UNUSED( widget )
-
     const QStyleOptionButton* btn = static_cast<const QStyleOptionButton*>( option );
 
     painter->save();
 
     QRect rect = btn->rect.adjusted( 1, 1, -1, -1 );
 
-    bool checked = btn->state & State_On;
-    bool hovered = btn->state & State_MouseOver;
-    bool pressed = btn->state & State_Sunken;
-    bool enabled = btn->state & State_Enabled;
+    bool checked         = btn->state & State_On;
+    bool hovered         = btn->state & State_MouseOver;
+    bool pressed         = btn->state & State_Sunken;
+    bool enabled         = btn->state & State_Enabled;
+    const auto* checkBox = qobject_cast<const QCheckBox*>( widget );
 
     QRect trackRect   = rect.adjusted( 0, 0, 0, 0 );
     qreal radius      = trackRect.height() / 2;
     qreal margin      = 2.5f;
     qreal thumbRadius = radius - margin;
 
-    float pos     = animationValue( option->styleObject, "_q_thumb_pos", ( checked ? 1.0f : 0.0f ) );
+    float pos            = animationValue( option->styleObject, "_q_thumb_pos", ( checked ? 1.0f : 0.0f ) );
+    const auto dragState = switchDragStates.constFind( checkBox );
+    if ( dragState != switchDragStates.cend() && dragState->phase == SwitchDragState::Dragging )
+    {
+        pos = qBound( 0.0f, static_cast<float>( dragState->position ), 1.0f );
+    }
     float scale   = animationValue( option->styleObject, "_q_thumb_scale", ( hovered ? 1.1f : 0.9f ) );
     float stretch = animationValue( option->styleObject, "_q_thumb_stretch", ( pressed ? 1.3f : 1.0f ) );
 
@@ -8537,6 +8560,11 @@ void FluentUI3Style::drawSwitchButton( const QStyleOption* option, QPainter* pai
     const qreal y = innerRect.top() + ( innerRect.height() - h ) / 2.0;
 
     const QRectF thumbRect( x, y, w, h );
+
+    if ( checkBox )
+    {
+        switchDragStates[ checkBox ].thumbRect = thumbRect;
+    }
 
     painter->setPen( Qt::NoPen );
     painter->setBrush( thumbColor );
@@ -8941,6 +8969,106 @@ bool FluentUI3Style::eventFilter( QObject* watched, QEvent* event )
             }
 
             popup->setGeometry( geom );
+        }
+    }
+    else if ( auto* checkBox = qobject_cast<QCheckBox*>( watched ); checkBox && checkBox->property( SwitchStyleProperty ).toBool() )
+    {
+        auto stateIt = switchDragStates.find( checkBox );
+
+        if ( event->type() == QEvent::MouseButtonPress )
+        {
+            auto* mouseEvent = static_cast<QMouseEvent*>( event );
+            if ( mouseEvent->button() == Qt::LeftButton && checkBox->isEnabled() && stateIt != switchDragStates.end() )
+            {
+#if QT_VERSION >= QT_VERSION_CHECK( 6, 0, 0 )
+                const QPointF mousePos = mouseEvent->position();
+#else
+                const QPointF mousePos = mouseEvent->pos();
+#endif
+                if ( stateIt->thumbRect.contains( mousePos ) )
+                {
+                    stateIt->pressX        = mousePos.x();
+                    stateIt->pressPosition = checkBox->isChecked() ? 1.0 : 0.0;
+                    stateIt->position      = stateIt->pressPosition;
+                    stateIt->phase         = SwitchDragState::Pressed;
+                }
+            }
+        }
+        else if ( event->type() == QEvent::MouseMove && stateIt != switchDragStates.end() && stateIt->phase != SwitchDragState::Idle )
+        {
+            auto* mouseEvent = static_cast<QMouseEvent*>( event );
+            if ( mouseEvent->buttons().testFlag( Qt::LeftButton ) )
+            {
+#if QT_VERSION >= QT_VERSION_CHECK( 6, 0, 0 )
+                const qreal mouseX = mouseEvent->position().x();
+#else
+                const qreal mouseX = mouseEvent->pos().x();
+#endif
+                const qreal dragDistance  = mouseX - stateIt->pressX;
+                const qreal thumbTravel   = qMax<qreal>( 1.0,
+                                                         proxy()->pixelMetric( PM_IndicatorWidth, nullptr, checkBox )
+                                                             - proxy()->pixelMetric( PM_IndicatorHeight, nullptr, checkBox ) );
+                const qreal dragThreshold = qMax<qreal>( 2.0, QApplication::startDragDistance() / 3.0 );
+
+                if ( stateIt->phase == SwitchDragState::Pressed && qAbs( dragDistance ) >= dragThreshold )
+                {
+                    stateIt->phase = SwitchDragState::Dragging;
+                    stopAnimationEx( checkBox, "_q_thumb_pos" );
+                }
+
+                if ( stateIt->phase == SwitchDragState::Dragging )
+                {
+                    stateIt->position = qBound<qreal>( 0.0, stateIt->pressPosition + dragDistance / thumbTravel, 1.0 );
+                    checkBox->update();
+                    return true;
+                }
+            }
+        }
+        else if ( event->type() == QEvent::MouseButtonRelease )
+        {
+            auto* mouseEvent = static_cast<QMouseEvent*>( event );
+            if ( mouseEvent->button() == Qt::LeftButton && stateIt != switchDragStates.end() && stateIt->phase != SwitchDragState::Idle )
+            {
+                const bool wasDragging = stateIt->phase == SwitchDragState::Dragging;
+                const qreal position   = stateIt->position;
+                stateIt->phase         = SwitchDragState::Idle;
+
+                if ( wasDragging )
+                {
+                    const bool checked = position >= 0.5;
+                    QPointer<QCheckBox> guardedCheckBox( checkBox );
+                    checkBox->setDown( false );
+                    checkBox->setChecked( checked );
+                    if ( !guardedCheckBox )
+                    {
+                        return true;
+                    }
+
+                    QNumberStyleAnimation* animation = new QNumberStyleAnimation( checkBox );
+                    animation->setStartValue( position );
+                    animation->setEndValue( checked ? 1.0 : 0.0 );
+                    animation->setDuration( 120 );
+                    animation->setFrameRate( QStyleAnimation::DefaultFps );
+                    startAnimationEx( animation, checkBox, "_q_thumb_pos" );
+                    checkBox->update();
+
+                    Q_EMIT checkBox->released();
+                    if ( !guardedCheckBox )
+                    {
+                        return true;
+                    }
+                    Q_EMIT checkBox->clicked( checked );
+                    return true;
+                }
+            }
+        }
+        else if ( event->type() == QEvent::UngrabMouse || event->type() == QEvent::Hide || event->type() == QEvent::EnabledChange )
+        {
+            if ( stateIt != switchDragStates.end() )
+            {
+                stateIt->phase = SwitchDragState::Idle;
+            }
+            checkBox->setDown( false );
         }
     }
     else if ( auto dial = qobject_cast<QDial*>( watched ) )

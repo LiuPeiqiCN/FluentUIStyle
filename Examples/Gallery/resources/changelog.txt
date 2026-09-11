@@ -1,3 +1,9 @@
+【更新内容2026-9-11】
+1. 新增 ExBreadcrumbBar 面包屑导航与 ExTeachingTip 教学引导提示控件
+2. ExTeachingTip 支持多方位自适应停靠、多层柔和阴影、尾巴绘制与打开缩放动画
+3. Gallery 新增面包屑与向导提示演示页（PageNavigationHint），支持分步操作引导（Tour）演示
+4. 新增 Qt Creator IDE 扩展插件构建选项（BUILD_QTCREATOR_PLUGIN）
+
 【更新内容2026-8-17】
 1. 新增 ExInfoBar 消息通知条控件，支持多种消息类型与自定义目标挂载
 2. 新增 ExExpander 折叠/展开面板控件，支持多内容组合

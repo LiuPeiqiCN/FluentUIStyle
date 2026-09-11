@@ -47,6 +47,18 @@ QVector<float> buildHannWindow(int size)
     return window;
 }
 
+QColor accentColor(const QPalette &palette)
+{
+#if QT_VERSION >= QT_VERSION_CHECK(6, 6, 0)
+    const QColor accent = palette.color(QPalette::Accent);
+    if (accent.isValid())
+    {
+        return accent;
+    }
+#endif
+    return palette.color(QPalette::Highlight);
+}
+
 } // namespace
 
 struct ExSpectrumWidget::Private
@@ -72,8 +84,6 @@ struct ExSpectrumWidget::Private
     int barCount{ExSpectrumWidget::DefaultBarCount};
     int sampleRate{44100};
     int refreshIntervalMs{ExSpectrumWidget::DefaultRefreshIntervalMs};
-    QColor barColor{QColor(96, 205, 255)};
-    bool useCustomBarColor{false};
 
     QTimer *timer{nullptr};
 };
@@ -108,7 +118,6 @@ ExSpectrumWidget::ExSpectrumWidget(QWidget *parent)
     d->timer->start(d->refreshIntervalMs);
 
     rebuildLogBinMap();
-    syncBarColorFromPalette();
 }
 
 ExSpectrumWidget::~ExSpectrumWidget()
@@ -155,23 +164,6 @@ int ExSpectrumWidget::sampleRate() const
     return d->sampleRate;
 }
 
-void ExSpectrumWidget::setBarColor(const QColor &color)
-{
-    if (d->barColor == color && d->useCustomBarColor)
-    {
-        return;
-    }
-
-    d->useCustomBarColor = true;
-    d->barColor = color;
-    emit barColorChanged(d->barColor);
-    update();
-}
-
-QColor ExSpectrumWidget::barColor() const
-{
-    return d->barColor;
-}
 
 void ExSpectrumWidget::setBarCount(int count)
 {
@@ -272,6 +264,7 @@ void ExSpectrumWidget::paintEvent(QPaintEvent *event)
                                   palette().color(QPalette::Text).blue(),
                                   dark ? 20 : 30);
 
+    const QColor barColor = accentColor(palette());
     painter.setPen(Qt::NoPen);
 
     for (int i = 0; i < d->barCount; ++i)
@@ -280,16 +273,16 @@ void ExSpectrumWidget::paintEvent(QPaintEvent *event)
         const int barHeight = qMax(2, int(d->bars[i] * maxBarHeight));
 
         const QRectF upperRect(x, waterY - barHeight, barWidth, barHeight);
-        painter.setBrush(d->barColor);
+        painter.setBrush(barColor);
         painter.drawRoundedRect(upperRect, kBarRadiusPx, kBarRadiusPx);
 
         const int reflectHeight = qMax(2, int(barHeight * 0.92f));
         const QRectF lowerRect(x, waterY + 1, barWidth, reflectHeight);
 
         QLinearGradient gradient(x, waterY + 1, x, waterY + 1 + reflectHeight);
-        QColor top = d->barColor;
+        QColor top = barColor;
         top.setAlpha(150);
-        QColor bottom = d->barColor;
+        QColor bottom = barColor;
         bottom.setAlpha(0);
         gradient.setColorAt(0.0, top);
         gradient.setColorAt(1.0, bottom);
@@ -300,15 +293,6 @@ void ExSpectrumWidget::paintEvent(QPaintEvent *event)
 
     painter.setPen(divider);
     painter.drawLine(0, waterY, area.width(), waterY);
-}
-
-void ExSpectrumWidget::changeEvent(QEvent *event)
-{
-    QWidget::changeEvent(event);
-    if (event->type() == QEvent::PaletteChange && !d->useCustomBarColor)
-    {
-        syncBarColorFromPalette();
-    }
 }
 
 void ExSpectrumWidget::resizeEvent(QResizeEvent *event)
@@ -468,10 +452,3 @@ void ExSpectrumWidget::applyAttackDecay()
     }
 }
 
-void ExSpectrumWidget::syncBarColorFromPalette()
-{
-    const bool dark = palette().color(QPalette::Window).lightness() < 128;
-    d->barColor = dark ? QColor(96, 205, 255) : QColor(0, 120, 212);
-    emit barColorChanged(d->barColor);
-    update();
-}

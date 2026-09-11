@@ -51,7 +51,7 @@ int main(int argc, char *argv[]) {
   }
 
   qDebug() << QStyleFactory::keys();
-  // qApp->setProperty("secondLevelRoundingRadius", 3);
+  qApp->setProperty("secondLevelRoundingRadius", 3);
   qApp->setProperty(
       "_q_scrollHint_center",
       false); // 控制QComboBox弹出位置，默认false，true则在QComboBox中心位置弹出

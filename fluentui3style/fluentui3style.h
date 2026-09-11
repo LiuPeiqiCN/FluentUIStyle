@@ -1,6 +1,7 @@
 #ifndef FLUENTUI3STYLE_H
 #define FLUENTUI3STYLE_H
 
+#include <QHash>
 #include <QPainter>
 #include <QPainterPath>
 #include <QProxyStyle>
@@ -17,6 +18,8 @@ enum class ControlType { Control, ControlAlt };
 enum FluentUI3PrimitiveElement {
   PE_FluentFlyoutSurface = QStyle::PE_CustomBase + 1
 };
+
+class QCheckBox;
 
 class FLUENTUI3STYLE_EXPORT FluentUI3Style : public QProxyStyle {
   Q_OBJECT
@@ -143,7 +146,19 @@ private:
   QColor accentColor(const QStyleOption *option) const;
 
 private:
+  struct SwitchDragState {
+    enum Phase { Idle, Pressed, Dragging };
+
+    QRectF thumbRect;
+    qreal pressX = 0.0;
+    qreal pressPosition = 0.0;
+    qreal position = 0.0;
+    Phase phase = Idle;
+    QMetaObject::Connection destroyedConnection;
+  };
+
   mutable QFont assetFont;
+  mutable QHash<const QCheckBox *, SwitchDragState> switchDragStates;
   bool highContrastTheme;
   mutable int colorSchemeIndex = 0;
   bool comboBoxAnimationEffectSaved = false;

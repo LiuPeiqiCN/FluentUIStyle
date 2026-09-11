@@ -20,7 +20,6 @@ class EXWIDGETS_EXPORT ExSpectrumWidget : public QWidget
     Q_OBJECT
     Q_PROPERTY(int sampleRate READ sampleRate WRITE setSampleRate NOTIFY sampleRateChanged FINAL)
     Q_PROPERTY(int barCount READ barCount WRITE setBarCount NOTIFY barCountChanged FINAL)
-    Q_PROPERTY(QColor barColor READ barColor WRITE setBarColor NOTIFY barColorChanged FINAL)
     Q_PROPERTY(int refreshIntervalMs READ refreshIntervalMs WRITE setRefreshIntervalMs NOTIFY refreshIntervalMsChanged FINAL)
 
 public:
@@ -40,9 +39,6 @@ public:
     void setBarCount(int count);
     int barCount() const;
 
-    void setBarColor(const QColor &color);
-    QColor barColor() const;
-
     void setRefreshIntervalMs(int intervalMs);
     int refreshIntervalMs() const;
 
@@ -61,13 +57,11 @@ public Q_SLOTS:
 signals:
     void sampleRateChanged(int sampleRate);
     void barCountChanged(int barCount);
-    void barColorChanged(const QColor &color);
     void refreshIntervalMsChanged(int intervalMs);
     void barsChanged(const QVector<float> &bars);
 
 protected:
     void paintEvent(QPaintEvent *event) override;
-    void changeEvent(QEvent *event) override;
     void resizeEvent(QResizeEvent *event) override;
 
 private slots:
@@ -77,7 +71,6 @@ private:
     void updateSpectrum();
     void rebuildLogBinMap();
     void applyAttackDecay();
-    void syncBarColorFromPalette();
 
     struct Private;
     Private *d;

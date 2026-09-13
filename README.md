@@ -1,6 +1,8 @@
 
 # FluentUI3Style：基于Qt的FluentUI3风格实现
 
+[![Platform build](https://github.com/XHY-ChuJian/FluentUIStyle/actions/workflows/build.yml/badge.svg?branch=master)](https://github.com/XHY-ChuJian/FluentUIStyle/actions/workflows/build.yml)
+
 **English:** [README_EN.md](README_EN.md) | **使用方法:** [USAGE.md](USAGE.md)
 
 ## 预览

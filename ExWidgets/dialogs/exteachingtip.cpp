@@ -125,7 +125,6 @@ public:
 ExTeachingTip::ExTeachingTip(QWidget *parent)
     : QWidget(parent), d_ptr(new ExTeachingTipPrivate) {
   Q_D(ExTeachingTip);
-  QWidget::setVisible(false);
   setFocusPolicy(Qt::StrongFocus);
   setAttribute(Qt::WA_StyledBackground, false);
   auto *root = new QVBoxLayout(this);
@@ -557,6 +556,9 @@ void ExTeachingTip::startOpenAnimation() {
 
 void ExTeachingTip::stopOpenAnimation() {
   Q_D(ExTeachingTip);
+  // 构造期间也可能同步收到 hideEvent，此时动画对象尚未创建。
+  if (!d->m_openAnimation)
+    return;
   if (d->m_openAnimation->state() != QAbstractAnimation::Stopped)
     d->m_openAnimation->stop();
   d->m_openAnimationActive = false;

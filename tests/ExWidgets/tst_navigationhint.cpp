@@ -406,7 +406,7 @@ void NavigationHintTests::tipOpenUsesScaleAnimation()
     QCOMPARE( animation->startValue().toDouble(), 0.01 );
     QCOMPARE( animation->endValue().toDouble(), 1.0 );
     QCOMPARE( animation->duration(), 167 );
-    QCOMPARE( animation->easingCurve().type(), QEasingCurve::OutQuint );
+    QCOMPARE( animation->easingCurve().type(), QEasingCurve::OutCubic );
     QCOMPARE( animation->state(), QAbstractAnimation::Running );
     QVERIFY( scroll->isHidden() );
     const QRect animationGeometry = tip->geometry();

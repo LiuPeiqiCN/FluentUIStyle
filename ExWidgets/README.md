@@ -410,7 +410,7 @@ Qt 侧边界与生命周期：
 - 窗口太小而无法容纳时不显示；内容过高时内部滚动，恢复短内容时重新计算高度。
 - 保持窗口内子控件实现，因此不提供 `ShouldConstrainToRootBounds=false` 的跨窗口浮层模式；也不暴露 XAML DependencyProperty、TemplateSettings。方向名称与语义对齐 WinUI，但边缘回退与限界由 Qt 的宿主尺寸决定。
 - `actionButtonAccent` 是 Qt 侧的便捷属性，默认 `true`，转发到操作按钮的 `accent` 动态属性，由 FluentUI3Style 绘制；关闭按钮不受影响，也不会因此改变默认按钮或焦点。其他 QStyle 是否呈现强调色取决于该样式是否支持 `accent`。
-- 打开动画参考 WinUI TeachingTip 的缩放方式：以尾巴连接面板的位置为原点，在 167ms 内将完整快照从 1% 缩放至 100%，使用 Qt 内置的 `OutQuint` 快速减速曲线；无目标时从中心缩放。真实控件几何和布局保持不变，关闭不播放动画。
+- 打开动画参考 WinUI TeachingTip 的缩放方式：以尾巴连接面板的位置为原点，在 167ms 内将完整快照从 1% 缩放至 100%，使用 Qt 内置的 `OutCubic` 快速减速曲线；无目标时从中心缩放。真实控件几何和布局保持不变，关闭不播放动画。
 - `animationEnabled` 默认启用，可通过 `setAnimationEnabled(false)` 关闭打开动画；播放期间关闭会立即恢复真实内容。Gallery 下方的分步操作引导示例关闭动画。
 - 阴影使用与本项目 QToolTip 相同的四层颜色、透明度和扩散范围，沿包含尾巴的轮廓外扩；只缓存轮廓，不给整个控件树设置 QGraphicsEffect。
 - 边框使用 1 个逻辑像素的线宽：Light 沿用 `surfaceStrokeFlyout`，Dark 使用按钮较亮的 `controlStrokeSecondary`，避免描边与深色面板背景融在一起；以 `QPen` 绘制，不依赖 QToolTip 的复合边框实现。

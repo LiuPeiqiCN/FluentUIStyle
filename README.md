@@ -63,7 +63,7 @@ PS:关于本项目自定义控件的问题，如果不改源码的话，本项�
 ### 注意事项
 
 - **版本兼容性**：样式库在 Qt 5.12、Qt 5.14.2、Qt 5.15.2、Qt 6.5.3、Qt 6.6.3（MSVC/MinGW 环境）下测试正常
-- **可选无边框组件**：默认构建 `ExWidgets::Frameless`（需 CMake ≥ 3.19）。可显式设置 `EXWIDGETS_BUILD_FRAMELESS=OFF` 使基础 `ExWidgets` 不引入 QWindowKit。
+- **可选无边框组件**：`Frameless::Frameless` 是静态库，链进应用程序，不产出 `Frameless.dll`（需 CMake ≥ 3.19）。`BUILD_FRAMELESS=OFF` 可关闭，不影响 `ExWidgets`。
 - **MinGW注意**：在 MinGW 环境下，菜单弹出可能需要特殊处理
 - **版本差异**：不同 Qt 版本间的差异主要体现在右键菜单的显示效果上，可能存在渲染或布局的细微差别
 - **兼容性建议**：由于 Qt 版本众多且自身兼容性差异，建议在使用时针对具体版本进行适当调整。完全兼容所有 Qt 版本不现实，但会确保对 Qt 最新稳定版的支持
@@ -88,7 +88,7 @@ PS:关于本项目自定义控件的问题，如果不改源码的话，本项�
 | Linux | ✅ 支持 | 已在 Ubuntu, Kylin (银河麒麟), Deepin 下测试通过 |
 
 > **⚠️ Linux 环境无边框建议：**
-> 在 Linux 系统下，建议**不要**折腾并使用无边框窗口功能（因为各发行版/桌面环境如 X11/Wayland 行为差异极大）。如果编译时遇到无边框相关的报错，请直接在 CMake 选项中将其关闭（如设置 `EXWIDGETS_BUILD_FRAMELESS=OFF`）。
+> 在 Linux 系统下，建议**不要**折腾并使用无边框窗口功能（因为各发行版/桌面环境如 X11/Wayland 行为差异极大）。如果编译时遇到无边框相关的报错，请直接在 CMake 选项中将其关闭（如设置 `BUILD_FRAMELESS=OFF`）。
 
 ## Python (PySide6) 支持与示例
 
@@ -127,8 +127,8 @@ git clone https://github.com/XHY-ChuJian/FluentUIStyle.git
 
 - `BUILD_LIBRARY`：编译样式库（默认 ON）
 - `BUILD_PLUGIN`：编译 Qt Style 插件（默认 ON）
-- `BUILD_GALLERY`：编译 Gallery（默认 ON）
-- `EXWIDGETS_BUILD_FRAMELESS`：编译 `ExWidgets::Frameless` 并引入 QWindowKit（Qt ≥ 5.15.2 默认 **ON**，旧版 Qt 默认 **OFF**）
+- `BUILD_EXAMPLES`：编译示例程序（默认 ON）
+- `BUILD_FRAMELESS`：编译无边框静态库 `Frameless::Frameless` 并引入 QWindowKit（默认 **ON**）
 - `FLUENTUI3STYLE_COPY_TO_QT_DIR`：构建后将插件复制到 Qt 的 `plugins/styles`（默认 **ON**）
 
 ## 使用方法

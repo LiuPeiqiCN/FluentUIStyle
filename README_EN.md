@@ -68,7 +68,7 @@ Happy coding.
 ### Notes
 
 - **Tested versions:** Style library on Qt 5.12, Qt 5.14.2, Qt 5.15.2, Qt 6.5.3 / 6.6.3 (MSVC/MinGW).
-- **Optional frameless component:** `ExWidgets::Frameless` is ON by default (requires CMake ≥ 3.19). Set `EXWIDGETS_BUILD_FRAMELESS=OFF` to keep base `ExWidgets` free of QWindowKit.
+- **Optional frameless component:** `Frameless::Frameless` is a static library linked into the app (no `Frameless.dll`; requires CMake ≥ 3.19). `BUILD_FRAMELESS=OFF` leaves `ExWidgets` unchanged.
 - **MinGW:** Menus may need extra handling in some MinGW setups.
 - **Version differences:** Mostly visible in context menus (rendering/layout nuances).
 - **Compatibility:** Qt has many versions; full parity everywhere is unrealistic, but recent stable Qt releases are the priority.
@@ -88,8 +88,8 @@ Happy coding.
 
 ### Get the source
 
-The optional `ExWidgets::Frameless` component uses **[QWindowKit](https://github.com/stdware/qwindowkit)** for frameless windows and DWM backdrops. The source code is directly included in the repository at `3rd/qwindowkit/`.
-It is enabled by default. Set `EXWIDGETS_BUILD_FRAMELESS=OFF` to disable the frameless component if needed.
+`Frameless::Frameless` uses **[QWindowKit](https://github.com/stdware/qwindowkit)** for frameless windows and DWM backdrops. The source lives in this repository at `3rd/qwindowkit/`.
+It is enabled by default. Set `BUILD_FRAMELESS=OFF` to skip it.
 
 #### Clone the repository
 
@@ -107,7 +107,7 @@ Other third-party code (e.g. `3rd/kissfft`) is committed directly in this repo.
 - OS: Windows 10/11 recommended.
 - Compiler: MSVC matching your Qt kit.
 - Qt: a tested version (e.g. Qt 6.6.3) is recommended.
-- CMake: 3.16+ for base components; 3.19+ for `ExWidgets::Frameless`.
+- CMake: 3.16+ for base components; 3.19+ for `Frameless::Frameless`.
 
 > Keep `cmake`, `ninja` (if used), and the Qt toolchain in one consistent environment to avoid “moc vs headers version mismatch” issues.
 
@@ -167,7 +167,7 @@ cmake --build build --config Debug
 - `BUILD_LIBRARY` — build the style library (default **ON**).
 - `BUILD_PLUGIN` — build the Qt style plugin (default **ON**).
 - `BUILD_EXAMPLES` — build all examples supported by the selected Qt version (default **ON**).
-- `EXWIDGETS_BUILD_FRAMELESS` — build `ExWidgets::Frameless` and bring in QWindowKit (default **ON**).
+- `BUILD_FRAMELESS` — build the `Frameless::Frameless` static library and bring in QWindowKit (default **ON**).
 - `FLUENTUI3STYLE_COPY_TO_QT_DIR` — copy the plugin into Qt’s `plugins/styles` after build (default **OFF**, avoids writing into a protected Qt install).
 
 For example, to build only the library and plugin:

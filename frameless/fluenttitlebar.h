@@ -5,15 +5,13 @@
 #include <QList>
 #include <QToolButton>
 
-#include "exwidgetsframeless_global.h"
-
 class QAction;
 class QButtonGroup;
 class QLineEdit;
 class QMainWindow;
 class QLabel;
 
-class EXWIDGETS_FRAMELESS_EXPORT FluentAccentColorButton : public QToolButton
+class FluentAccentColorButton : public QToolButton
 {
     Q_OBJECT
 
@@ -35,7 +33,7 @@ private:
     bool m_isDefault{false};
 };
 
-class EXWIDGETS_FRAMELESS_EXPORT FluentTitleBar : public QWidget
+class FluentTitleBar : public QWidget
 {
     Q_OBJECT
 
@@ -70,6 +68,7 @@ private:
     void updateThemeButton();
     void updatePinButton();
     void updateAccentButtons();
+    void applyAccent(int index, const QColor &color);
     void onAccentButtonClicked(int id);
 
     QMainWindow *m_window{nullptr};

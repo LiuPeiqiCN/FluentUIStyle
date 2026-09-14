@@ -90,7 +90,7 @@ jobs:
           -DBUILD_PLUGIN=${{ matrix.build-plugin }}
           -DBUILD_EXAMPLES=ON
           -DBUILD_QTCREATOR_PLUGIN=OFF
-          -DEXWIDGETS_BUILD_FRAMELESS=OFF
+          -DBUILD_FRAMELESS=OFF
           -DEXWIDGETS_BUILD_TESTS=ON
           -DFLUENTUI3STYLE_COPY_TO_QT_DIR=OFF
           -DCMAKE_INSTALL_PREFIX="${{ github.workspace }}/stage"

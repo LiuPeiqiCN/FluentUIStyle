@@ -44,6 +44,29 @@ target_link_libraries(MyApp PRIVATE Qt6::Core Qt6::Gui Qt6::Widgets)
 
 只要运行环境能找到 `FluentUI3` 插件（`plugins/styles` 下），业务工程无需显式链接 `FluentUI3Style` 库即可使用 `app.setStyle("FluentUI3")`。
 
+### 5) 安装后引用 ExWidgets / Frameless
+
+`cmake --install` 默认装进当前 Qt Kit（与 `find_package(Qt6)` 同一 prefix），对方工程一般不用再设 `CMAKE_PREFIX_PATH`：
+
+```cmake
+find_package(ExWidgets CONFIG REQUIRED)
+find_package(Frameless CONFIG REQUIRED)   # 不用无边框就省略
+
+target_link_libraries(MyApp PRIVATE
+    ExWidgets::ExWidgets   # 可选
+    Frameless::Frameless   # 可选
+)
+```
+
+```cpp
+#include "fluentwindowframe.h"
+#include "fluenttitlebar.h"
+```
+
+- `ExWidgets` 是 DLL，运行时放到 exe 旁。
+- `Frameless` 是静态库，链进 exe，没有 `Frameless.dll`；运行时需要 QWindowKit 的 `QWKCore` / `QWKWidgets` DLL（会随本仓库一起安装）。
+- Fluent 外观仍靠样式插件，不链接 `FluentUI3Style`。
+
 ## 其他加载方式
 
 ### 方式 1：直接在代码中创建样式实例

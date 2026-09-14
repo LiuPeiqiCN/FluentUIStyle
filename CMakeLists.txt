@@ -117,7 +117,7 @@ endif()
 # Local desktop runs: keep all configs in the same output dir (Windows/MSVC convenience).
 # Android application targets are MODULE_LIBRARY targets. Keep their library output in
 # each target's build directory so Qt Creator can find the adjacent deployment JSON.
-# Optional components such as ExWidgetsFrameless also inherit these paths.
+# Optional components such as Frameless also inherit these paths.
 set(_out_bin "${CMAKE_BINARY_DIR}/bin")
 set(_out_lib "${CMAKE_BINARY_DIR}/lib")
 
@@ -139,6 +139,7 @@ endforeach()
 
 option(BUILD_LIBRARY "Build as library" ON)
 option(BUILD_PLUGIN "Build as plugin (Windows only)" ON)
+option(BUILD_FRAMELESS "Build the QWindowKit-based frameless window component" ON)
 option(BUILD_EXAMPLES "Build example applications" ON)
 option(BUILD_QTCREATOR_PLUGIN "Build Qt Creator extension plugin" OFF)
 
@@ -146,11 +147,10 @@ if(NOT WIN32)
     set(BUILD_PLUGIN OFF)
 endif()
 
-# QWindowKit's frameless integration provides desktop window chrome. Android
-# windows already use the Activity surface and must not install a desktop title bar.
+# Android windows already use the Activity surface and must not install a desktop title bar.
 if(ANDROID)
-    set(EXWIDGETS_BUILD_FRAMELESS OFF CACHE BOOL
-        "Build the optional QWindowKit-based frameless window component" FORCE
+    set(BUILD_FRAMELESS OFF CACHE BOOL
+        "Build the QWindowKit-based frameless window component" FORCE
     )
 endif()
 
@@ -164,6 +164,10 @@ endif()
 
 if(BUILD_LIBRARY)
     add_subdirectory(fluentui3style)
+endif()
+
+if(BUILD_FRAMELESS)
+    add_subdirectory(frameless)
 endif()
 
 if(BUILD_PLUGIN)
@@ -186,26 +190,11 @@ install(TARGETS ExWidgets
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
 )
 
-if(TARGET ExWidgetsFrameless)
-    install(TARGETS ExWidgetsFrameless
-        EXPORT ExWidgetsTargets
-        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    )
-endif()
-
 if(MSVC)
     install(FILES $<TARGET_PDB_FILE:ExWidgets>
         DESTINATION ${CMAKE_INSTALL_BINDIR}
         OPTIONAL
     )
-    if(TARGET ExWidgetsFrameless)
-        install(FILES $<TARGET_PDB_FILE:ExWidgetsFrameless>
-            DESTINATION ${CMAKE_INSTALL_BINDIR}
-            OPTIONAL
-        )
-    endif()
 endif()
 
 if(BUILD_LIBRARY)
@@ -234,10 +223,23 @@ install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/FluentUI3Colors/"
     FILES_MATCHING PATTERN "*.h"
 )
 
+if(TARGET Frameless)
+    install(TARGETS Frameless
+        EXPORT FramelessTargets
+        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/Frameless
+    )
+    install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/frameless/"
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/Frameless
+        FILES_MATCHING PATTERN "*.h"
+    )
+endif()
+
 if(BUILD_LIBRARY)
     install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/fluentui3style/"
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/FluentUI3Style
         FILES_MATCHING PATTERN "*.h"
+        PATTERN "plugin" EXCLUDE
     )
 endif()
 
@@ -269,6 +271,32 @@ install(FILES
     "${_cfg_dir}/ExWidgetsConfigVersion.cmake"
     DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/ExWidgets
 )
+
+if(TARGET Frameless)
+    configure_package_config_file(
+        "${CMAKE_CURRENT_SOURCE_DIR}/cmake/FramelessConfig.cmake.in"
+        "${_cfg_dir}/FramelessConfig.cmake"
+        INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/Frameless
+    )
+
+    write_basic_package_version_file(
+        "${_cfg_dir}/FramelessConfigVersion.cmake"
+        VERSION ${PROJECT_VERSION}
+        COMPATIBILITY SameMinorVersion
+    )
+
+    install(EXPORT FramelessTargets
+        FILE FramelessTargets.cmake
+        NAMESPACE Frameless::
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/Frameless
+    )
+
+    install(FILES
+        "${_cfg_dir}/FramelessConfig.cmake"
+        "${_cfg_dir}/FramelessConfigVersion.cmake"
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/Frameless
+    )
+endif()
 
 if(BUILD_LIBRARY)
     configure_package_config_file(

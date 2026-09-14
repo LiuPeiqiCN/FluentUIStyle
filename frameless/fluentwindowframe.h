@@ -3,8 +3,6 @@
 #include <QObject>
 #include <QString>
 
-#include "exwidgetsframeless_global.h"
-
 class FluentTitleBar;
 class QMainWindow;
 class QMenuBar;
@@ -14,7 +12,7 @@ namespace QWK {
 class WidgetWindowAgent;
 }  // namespace QWK
 
-class EXWIDGETS_FRAMELESS_EXPORT FluentWindowFrame : public QObject
+class FluentWindowFrame : public QObject
 {
     Q_OBJECT
 

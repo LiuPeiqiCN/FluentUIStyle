@@ -2,10 +2,6 @@
 
 #include "qlineedit.h"
 
-#ifndef WIN32
-#include "fluentui3style.h"
-#endif
-
 #include <QAction>
 #include <QApplication>
 #include <QButtonGroup>
@@ -294,8 +290,7 @@ void FluentTitleBar::setAccentColor(const QColor &color) {
     }
   }
 
-  m_currentAccentIndex = matchIndex;
-  updateAccentButtons();
+  applyAccent(matchIndex, color);
 }
 
 void FluentTitleBar::setAccentColors(const QList<QColor> &colors) {
@@ -429,26 +424,16 @@ void FluentTitleBar::updateAccentButtons() {
   }
 }
 
+void FluentTitleBar::applyAccent(int index, const QColor &color) {
+  m_currentAccentIndex = index;
+  updateAccentButtons();
+  emit accentColorChanged(color);
+}
+
 void FluentTitleBar::onAccentButtonClicked(int id) {
   if (id < 0 || id >= m_accentColors.size()) {
     return;
   }
 
-  m_currentAccentIndex = id;
-  const QColor color = m_accentColors[id];
-
-  updateAccentButtons();
-
-  if (color.isValid()) {
-    qApp->setProperty("_q_accent_color", color);
-  } else {
-    qApp->setProperty("_q_accent_color", QVariant());
-  }
-#ifdef WIN32
-  qApp->setStyle(QStringLiteral("FluentUI3"));
-#else
-  qApp->setStyle(new FluentUI3Style);
-#endif
-
-  emit accentColorChanged(color);
+  applyAccent(id, m_accentColors[id]);
 }

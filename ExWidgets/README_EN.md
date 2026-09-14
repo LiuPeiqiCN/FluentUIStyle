@@ -14,15 +14,14 @@ The **Gallery** app includes live demos under the **ExWidgets** navigation group
 target_link_libraries(MyApp PRIVATE ExWidgets::ExWidgets Qt6::Widgets)
 ```
 
-For the optional QWindowKit-based window chrome:
+Frameless window chrome (`FluentTitleBar` / `FluentWindowFrame`) is a separate static library. After install:
 
 ```cmake
-set(EXWIDGETS_BUILD_FRAMELESS ON CACHE BOOL "" FORCE)
-add_subdirectory(path/to/Window11Style/ExWidgets)
-target_link_libraries(MyApp PRIVATE ExWidgets::Frameless)
+find_package(Frameless CONFIG REQUIRED)
+target_link_libraries(MyApp PRIVATE Frameless::Frameless)
 ```
 
-Installed packages support `find_package(ExWidgets CONFIG REQUIRED COMPONENTS Frameless)`. The option defaults to ON with Qt ≥ 5.12; explicitly setting it OFF keeps base `ExWidgets` free of QWindowKit.
+It does not link `ExWidgets` or `FluentUI3Style`.
 
 ```cpp
 #include "exspectrumwidget.h"
@@ -58,7 +57,6 @@ Installed packages support `find_package(ExWidgets CONFIG REQUIRED COMPONENTS Fr
 | `ExStackedWidget` | `exstackedwidget.h` | Animated stacked pages |
 | `ExTabWidget` | `extabwidget.h` | Animated tab widget |
 | `ColorGradientSlider` | `colorgradientslider.h` | Gradient groove slider |
-| `FluentTitleBar` / `FluentWindowFrame` | `fluenttitlebar.h` / `fluentwindowframe.h` | Optional QWindowKit window chrome |
 
 See [README.md](README.md) for detailed API examples (Chinese).
 

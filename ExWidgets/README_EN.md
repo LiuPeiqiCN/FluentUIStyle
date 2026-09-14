@@ -37,8 +37,9 @@ It does not link `ExWidgets` or `FluentUI3Style`.
 | `ExRangeSlider` | `exrangeslider.h` | Dual-handle range slider |
 | `ExBorderBeam` / `ExBorderBeamButton` | `exborderbeam.h` / `exborderbeambutton.h` | Animated gradient border container and button with Light/Dark themes |
 | `ExAudioLevelMeter` | `exaudiolevelmeter.h` | Mono/stereo dBFS level meter with scale, decay, and peak hold |
-| `ExColorPicker` | `excolorpicker.h` | Full color picker dialog |
+| `ExColorPicker` | `excolorpicker.h` | Inline color picker / flyout |
 | `ExColorPickerButton` | `excolorpickerbutton.h` | Tool button + flyout picker |
+| `ExColorPickerDialog` | `excolorpickerdialog.h` | Titled dialog with two equal-width, full-width footer buttons; `colorSelected` commits on acceptance, cancellation restores the opening color |
 | `ExMessageBox` | `exmessagebox.h` | Fluent-styled `QMessageBox` |
 | `ExContentDialog` | `excontentdialog.h` | WinUI3 ContentDialog |
 | `ExInfoBar` | `exinfobar.h` | Inline, non-blocking notification with severity, actions, and dismissal animation |

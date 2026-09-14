@@ -62,6 +62,7 @@ LIBS += -lExWidgets
 | `ExAudioLevelMeter` | `exaudiolevelmeter.h` | 支持单声道/立体声、dBFS 刻度、峰值保持和衰减的音频电平表 | ExWidgets → ExAudioLevelMeter |
 | `ExColorPicker` | `excolorpicker.h` | CommunityToolkit 取色器 | ExWidgets → ExColorPicker |
 | `ExColorPickerButton` | `excolorpickerbutton.h` | 带 Flyout 的取色按钮 | ExColorPicker 页内 |
+| `ExColorPickerDialog` | `excolorpickerdialog.h` | 带标题及底部等宽大按钮的颜色对话框 | ExColorPicker 页内 |
 | `ExMessageBox` | `exmessagebox.h` | Fluent 风格 `QMessageBox` | Dialogs 页 |
 | `ExContentDialog` | `excontentdialog.h` | WinUI3 ContentDialog | Dialogs 页 |
 | `ExInfoBar` | `exinfobar.h` | 页面内非阻塞通知，支持四种严重级别、操作与关闭动画 | ExWidgets → ExInfoBar / ExExpander |
@@ -288,27 +289,43 @@ gauge->setUnit(QStringLiteral("km/h"));
 
 ---
 
-## ExColorPicker / ExColorPickerButton
+## ExColorPicker / ExColorPickerButton / ExColorPickerDialog
 
 对齐 **WinUI3 CommunityToolkit ColorPicker**：Spectrum / Palette / Sliders 三页，支持 Alpha、Hex、RGB/HSV。
 
-### ExColorPicker（对话框 / 内嵌）
+### ExColorPicker（内嵌）
 
 ```cpp
 #include "excolorpicker.h"
 
-ExColorPicker picker(parent);
-picker.setColor(Qt::blue);
-picker.setAlphaEnabled(true);
-picker.setColorSpectrumVisible(true);
-picker.setColorPaletteVisible(true);
-
-if (picker.exec() == QDialog::Accepted) {
-    const QColor c = picker.color();
-}
+auto *picker = new ExColorPicker(parent);
+picker->setColor(Qt::blue);
+picker->setAlphaEnabled(true);
+layout->addWidget(picker);
 ```
 
 内嵌到页面时构造 `ExColorPicker(parent, /*popup=*/false)`，无需 `exec()`，监听 `colorChanged` 即可。
+
+### ExColorPickerDialog
+
+顶部标题，底部独立操作区：左侧主题色「确定」、右侧「取消」，两个按钮等宽填满可用宽度，最小高度 40px。支持浅色和深色主题。
+
+打开时在宿主窗口上显示与 `ExMessageBox` 相同的黑色半透明遮罩，统一采用 WinUI 3 的 `SmokeFillColorDefault`：浅色、深色均为 `#4D000000`（Alpha 77/255，约 30%）。遮罩随宿主窗口调整大小，关闭或销毁对话框时立即移除，不使用动画。
+
+```cpp
+#include "excolorpickerdialog.h"
+#include "excolorpicker.h"
+
+ExColorPickerDialog dialog(this);
+dialog.setTitle(tr("编辑颜色"));
+dialog.setColor(Qt::blue);
+dialog.colorPicker()->setAlphaEnabled(true);
+if (dialog.exec() == QDialog::Accepted) {
+    const QColor selected = dialog.color();
+}
+```
+
+也可以用 `open()` 非阻塞打开，监听 `colorSelected` 提交结果；`colorChanged` 用于实时预览。取消、Esc 或关闭窗口会恢复本次打开前的颜色，不发出 `colorSelected`。通过 `colorPicker()` 配置色域形状、Alpha 和自定义色板等选项。Gallery 的 ExColorPicker 页顶部提供弹窗演示。
 
 ### ExColorPickerButton
 

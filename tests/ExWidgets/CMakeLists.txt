@@ -6,3 +6,10 @@ target_link_libraries(ExWidgetsNavigationHintTests PRIVATE
     Qt${QT_VERSION_MAJOR}::Test
 )
 add_test(NAME ExWidgetsNavigationHintTests COMMAND ExWidgetsNavigationHintTests)
+
+add_executable(ExWidgetsColorPickerDialogTests tst_colorpickerdialog.cpp)
+target_link_libraries(ExWidgetsColorPickerDialogTests PRIVATE
+    ExWidgets::ExWidgets
+    Qt${QT_VERSION_MAJOR}::Test
+)
+add_test(NAME ExWidgetsColorPickerDialogTests COMMAND ExWidgetsColorPickerDialogTests)

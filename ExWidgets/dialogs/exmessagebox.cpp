@@ -248,9 +248,9 @@ void ExMessageBoxPrivate::showOverlay() {
     m_overlay = new QWidget(topLevel);
     m_overlay->setObjectName(QStringLiteral("ExMessageBoxOverlay"));
     m_overlay->setAttribute(Qt::WA_StyledBackground, true);
+    // WinUI 3 SmokeFillColorDefault: #4D000000 in both light and dark themes.
     m_overlay->setStyleSheet(
-        QStringLiteral("background-color: rgba(0, 0, 0, %1);")
-            .arg(isDarkMode() ? 0.45 : 0.3));
+        QStringLiteral("background-color: rgba(0, 0, 0, 77);"));
     m_overlayParent = topLevel;
     // 安装事件过滤器，让遮罩跟随父窗口大小变化
     topLevel->installEventFilter(q_ptr);

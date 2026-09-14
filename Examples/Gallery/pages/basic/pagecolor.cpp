@@ -2,6 +2,7 @@
 
 #include <excolorpicker.h>
 #include <excolorpickerbutton.h>
+#include <excolorpickerdialog.h>
 
 #include <QLabel>
 #include <QPushButton>
@@ -76,6 +77,33 @@ PageColor::PageColor(QWidget *parent)
         content);
     hint->setWordWrap(true);
     mainLay->addWidget(hint);
+
+    QHBoxLayout *dialogRow = addCardSection(mainLay, content, tr("ColorPickerDialog（对话框）"));
+    auto *dialogButton = new QPushButton(tr("编辑颜色…"), content);
+    dialogButton->setObjectName(QStringLiteral("openColorPickerDialog"));
+    dialogButton->setProperty("accent", true);
+    auto *dialogSwatch = new QLabel(content);
+    dialogSwatch->setFixedSize(40, 32);
+    dialogSwatch->setAutoFillBackground(true);
+    auto *dialogResult = new QLabel(content);
+    dialogResult->setWordWrap(true);
+    auto *dialog = new ExColorPickerDialog(this);
+    dialog->setColor(QColor(0x00, 0x78, 0xD4));
+    auto updateDialogResult = [dialogSwatch, dialogResult](const QColor &color)
+    {
+        QPalette swatchPalette = dialogSwatch->palette();
+        swatchPalette.setColor(QPalette::Window, color);
+        dialogSwatch->setPalette(swatchPalette);
+        dialogSwatch->setToolTip(color.name(QColor::HexArgb).toUpper());
+        dialogResult->setText(tr("已确认颜色：%1").arg(color.name(QColor::HexArgb).toUpper()));
+    };
+    updateDialogResult(dialog->color());
+    connect(dialog, &ExColorPickerDialog::colorSelected, this, updateDialogResult);
+    connect(dialogButton, &QPushButton::clicked, dialog, &QDialog::open);
+    dialogRow->insertWidget(0, dialogButton);
+    dialogRow->insertWidget(1, dialogSwatch);
+    dialogRow->insertWidget(2, dialogResult);
+    dialogRow->setStretch(2, 1);
 
     ExColorPicker *inlinePicker = nullptr;
 

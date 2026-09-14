@@ -458,6 +458,36 @@
     </message>
 </context>
 <context>
+    <name>ExColorPickerDialog</name>
+    <message>
+        <source>编辑颜色</source>
+        <translation>Edit color</translation>
+    </message>
+    <message>
+        <source>确定</source>
+        <translation>OK</translation>
+    </message>
+    <message>
+        <source>取消</source>
+        <translation>Cancel</translation>
+    </message>
+</context>
+<context>
+    <name>PageColor</name>
+    <message>
+        <source>ColorPickerDialog（对话框）</source>
+        <translation>ColorPickerDialog (Dialog)</translation>
+    </message>
+    <message>
+        <source>编辑颜色…</source>
+        <translation>Edit color…</translation>
+    </message>
+    <message>
+        <source>已确认颜色：%1</source>
+        <translation>Confirmed color: %1</translation>
+    </message>
+</context>
+<context>
     <name>ColorShowcaseWidget</name>
     <message>
         <location filename="../colorshowcasewidget.cpp" line="64" />

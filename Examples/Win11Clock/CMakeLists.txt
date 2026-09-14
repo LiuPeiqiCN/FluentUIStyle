@@ -17,17 +17,18 @@ endif()
 find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Core Gui Widgets)
 find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core Gui Widgets)
 
-# Reuse the repository's shared widgets. The ExWidgets target owns its
-# secondary implementation dependencies.
-if(NOT TARGET ExWidgets::ExWidgets)
+# Standalone Clock project pulls sibling libraries itself. When built from the
+# repository root, respect the parent's BUILD_FRAMELESS / already-created targets.
+if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
     get_filename_component(WINDOW11STYLE_ROOT "${CMAKE_CURRENT_LIST_DIR}/../.." ABSOLUTE)
-    add_subdirectory("${WINDOW11STYLE_ROOT}/ExWidgets"
-                     "${CMAKE_CURRENT_BINARY_DIR}/dependencies/ExWidgets")
-endif()
-if(NOT TARGET Frameless::Frameless)
-    get_filename_component(WINDOW11STYLE_ROOT "${CMAKE_CURRENT_LIST_DIR}/../.." ABSOLUTE)
-    add_subdirectory("${WINDOW11STYLE_ROOT}/frameless"
-                     "${CMAKE_CURRENT_BINARY_DIR}/dependencies/frameless")
+    if(NOT TARGET ExWidgets::ExWidgets)
+        add_subdirectory("${WINDOW11STYLE_ROOT}/ExWidgets"
+                         "${CMAKE_CURRENT_BINARY_DIR}/dependencies/ExWidgets")
+    endif()
+    if(NOT TARGET Frameless::Frameless)
+        add_subdirectory("${WINDOW11STYLE_ROOT}/frameless"
+                         "${CMAKE_CURRENT_BINARY_DIR}/dependencies/frameless")
+    endif()
 endif()
 
 file(GLOB_RECURSE WIN11_CLOCK_SOURCES

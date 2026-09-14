@@ -46,8 +46,6 @@ if(BUILD_EXAMPLES)
         ${AUDIOMATIC_MINI_APP_SOURCES}
     )
 
-    target_compile_definitions(AudiomaticMini PRIVATE)
-
     target_include_directories(AudiomaticMini PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}
         ${CMAKE_CURRENT_SOURCE_DIR}/../../fluentui3style
@@ -65,15 +63,18 @@ if(BUILD_EXAMPLES)
         ${FLUENT_QT_PRIVATE_LIBS}
     )
     if(NOT WIN32)
-        target_link_libraries(AudiomaticMini PRIVATE FluentUI3Style)
+        if(TARGET FluentUI3Style)
+            target_link_libraries(AudiomaticMini PRIVATE FluentUI3Style)
+            target_compile_definitions(AudiomaticMini PRIVATE HAS_FLUENTUI3_STYLE_LIB)
+        endif()
         set_target_properties(AudiomaticMini PROPERTIES
             BUILD_RPATH "$ORIGIN/../lib"
             INSTALL_RPATH "$ORIGIN/../lib"
         )
     endif()
-    if(TARGET ExWidgets::Frameless)
+    if(TARGET Frameless::Frameless)
         target_compile_definitions(AudiomaticMini PRIVATE AUDIOMATIC_ENABLE_FRAMELESS)
-        target_link_libraries(AudiomaticMini PRIVATE ExWidgets::Frameless)
+        target_link_libraries(AudiomaticMini PRIVATE Frameless::Frameless)
     endif()
 
     set_target_properties(AudiomaticMini PROPERTIES
@@ -106,7 +107,7 @@ if(BUILD_EXAMPLES)
     )
 
     target_link_libraries(SpectrumDemo PRIVATE
-        ExWidgets
+        ExWidgets::ExWidgets
         Qt6::Core
         Qt6::Gui
         Qt6::Widgets

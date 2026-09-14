@@ -7,7 +7,7 @@
 #include <QStyle>
 #include <QTextEdit>
 
-#ifndef WIN32
+#ifdef HAS_FLUENTUI3_STYLE_LIB
 #include "fluentui3style.h"
 #endif
 
@@ -64,9 +64,9 @@ int main(int argc, char *argv[]) {
   qApp->setProperty("comboBoxPopupDropDownAnimationEnabled", false);
 #endif
 
-#ifdef WIN32
+#ifdef Q_OS_WIN
   qApp->setStyle("FluentUI3");
-#else
+#elif defined(HAS_FLUENTUI3_STYLE_LIB)
   qApp->setStyle(new FluentUI3Style);
 #endif
 

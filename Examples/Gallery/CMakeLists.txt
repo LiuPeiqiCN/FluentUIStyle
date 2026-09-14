@@ -81,7 +81,10 @@ if(WIN32)
     target_compile_definitions(Gallery PRIVATE GALLERY_ENABLE_I18N)
     target_link_libraries(Gallery PRIVATE dbghelp iphlpapi pdh)
 else()
-    target_link_libraries(Gallery PRIVATE FluentUI3Style)
+    if(TARGET FluentUI3Style)
+        target_link_libraries(Gallery PRIVATE FluentUI3Style)
+        target_compile_definitions(Gallery PRIVATE HAS_FLUENTUI3_STYLE_LIB)
+    endif()
     set_target_properties(Gallery PROPERTIES
         BUILD_RPATH "$ORIGIN/../lib"
         INSTALL_RPATH "$ORIGIN/../lib"
@@ -97,9 +100,9 @@ target_link_libraries(Gallery PRIVATE
     ${FLUENT_QT_PRIVATE_LIBS}
 )
 
-if(NOT ANDROID AND TARGET ExWidgets::Frameless)
+if(NOT ANDROID AND TARGET Frameless::Frameless)
     target_compile_definitions(Gallery PRIVATE GALLERY_ENABLE_FRAMELESS)
-    target_link_libraries(Gallery PRIVATE ExWidgets::Frameless)
+    target_link_libraries(Gallery PRIVATE Frameless::Frameless)
 endif()
 
 if(QT_VERSION_MAJOR GREATER_EQUAL 6 AND NOT ANDROID)

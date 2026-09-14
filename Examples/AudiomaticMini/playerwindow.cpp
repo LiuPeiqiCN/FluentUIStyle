@@ -5,8 +5,12 @@
 #ifdef AUDIOMATIC_ENABLE_FRAMELESS
 #include <fluenttitlebar.h>
 #include <fluentwindowframe.h>
+#include <QApplication>
 #include <QLineEdit>
 #include <QToolButton>
+#ifdef HAS_FLUENTUI3_STYLE_LIB
+#include "fluentui3style.h"
+#endif
 #endif
 
 #include <QMenuBar>
@@ -47,6 +51,18 @@ void PlayerWindow::setupTitleBar()
         titleBar->searchLineEdit()->hide();
         titleBar->themeButton()->hide();
         titleBar->pinButton()->hide();
+        connect(titleBar,
+                &FluentTitleBar::accentColorChanged,
+                this,
+                [](const QColor &color) {
+                    qApp->setProperty("_q_accent_color",
+                                      color.isValid() ? QVariant(color) : QVariant());
+#ifdef Q_OS_WIN
+                    qApp->setStyle(QStringLiteral("FluentUI3"));
+#elif defined(HAS_FLUENTUI3_STYLE_LIB)
+                    qApp->setStyle(new FluentUI3Style);
+#endif
+                });
     }
 }
 #endif

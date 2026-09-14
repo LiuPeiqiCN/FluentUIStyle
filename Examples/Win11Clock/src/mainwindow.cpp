@@ -15,6 +15,9 @@
 #include <QApplication>
 #include <QLineEdit>
 #include <QToolButton>
+#ifdef HAS_FLUENTUI3_STYLE_LIB
+#include "fluentui3style.h"
+#endif
 #endif
 
 #include <QFrame>
@@ -48,6 +51,19 @@ MainWindow::MainWindow(QWidget* parent)
                 {
                     const bool isDark = qApp->property("_q_colorscheme").toInt() == 1;
                     m_settingsPage->setDarkTheme(!isDark);
+                });
+        connect(titleBar,
+                &FluentTitleBar::accentColorChanged,
+                this,
+                [](const QColor& color)
+                {
+                    qApp->setProperty("_q_accent_color",
+                                      color.isValid() ? QVariant(color) : QVariant());
+#ifdef Q_OS_WIN
+                    qApp->setStyle(QStringLiteral("FluentUI3"));
+#elif defined(HAS_FLUENTUI3_STYLE_LIB)
+                    qApp->setStyle(new FluentUI3Style);
+#endif
                 });
     }
 #endif

@@ -24,6 +24,11 @@ if(NOT TARGET ExWidgets::ExWidgets)
     add_subdirectory("${WINDOW11STYLE_ROOT}/ExWidgets"
                      "${CMAKE_CURRENT_BINARY_DIR}/dependencies/ExWidgets")
 endif()
+if(NOT TARGET Frameless::Frameless)
+    get_filename_component(WINDOW11STYLE_ROOT "${CMAKE_CURRENT_LIST_DIR}/../.." ABSOLUTE)
+    add_subdirectory("${WINDOW11STYLE_ROOT}/frameless"
+                     "${CMAKE_CURRENT_BINARY_DIR}/dependencies/frameless")
+endif()
 
 file(GLOB_RECURSE WIN11_CLOCK_SOURCES
     "src/*.cpp"
@@ -47,13 +52,14 @@ target_link_libraries(Win11Clock PRIVATE
     Qt${QT_VERSION_MAJOR}::Widgets
 )
 
-if(NOT WIN32)
+if(NOT WIN32 AND TARGET FluentUI3Style)
     target_link_libraries(Win11Clock PRIVATE FluentUI3Style)
+    target_compile_definitions(Win11Clock PRIVATE HAS_FLUENTUI3_STYLE_LIB)
 endif()
 
-if(TARGET ExWidgets::Frameless)
+if(TARGET Frameless::Frameless)
     target_compile_definitions(Win11Clock PRIVATE WIN11CLOCK_ENABLE_FRAMELESS)
-    target_link_libraries(Win11Clock PRIVATE ExWidgets::Frameless)
+    target_link_libraries(Win11Clock PRIVATE Frameless::Frameless)
 endif()
 
 set_target_properties(Win11Clock PROPERTIES

@@ -8,7 +8,7 @@
 #include "playerwindow.h"
 #include "spectrumdemowindow.h"
 
-#ifndef WIN32
+#ifdef HAS_FLUENTUI3_STYLE_LIB
 #include "fluentui3style.h"
 #endif
 
@@ -40,9 +40,9 @@ int main(int argc, char *argv[])
     app.setProperty("_q_colorscheme", 1);
     if (!demoMode)
     {
-#ifdef WIN32
+#ifdef Q_OS_WIN
         app.setStyle(QStringLiteral("FluentUI3"));
-#else
+#elif defined(HAS_FLUENTUI3_STYLE_LIB)
         app.setStyle(new FluentUI3Style);
 #endif
     }

@@ -15,6 +15,10 @@
 #include <QUrl>
 #include <QVBoxLayout>
 
+#ifdef HAS_FLUENTUI3_STYLE_LIB
+#include "fluentui3style.h"
+#endif
+
 namespace
 {
 CardWidget* createSettingsRow(const QString& glyph,
@@ -80,7 +84,11 @@ bool systemUsesDarkTheme()
 void applyFluentStyle(bool dark)
 {
     qApp->setProperty("_q_colorscheme", dark ? 1 : 0);
+#ifdef Q_OS_WIN
     qApp->setStyle(QStringLiteral("FluentUI3"));
+#elif defined(HAS_FLUENTUI3_STYLE_LIB)
+    qApp->setStyle(new FluentUI3Style);
+#endif
 }
 }
 

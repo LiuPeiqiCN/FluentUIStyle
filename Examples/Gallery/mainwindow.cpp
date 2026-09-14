@@ -118,7 +118,7 @@
 #include <fluenttitlebar.h>
 #include <fluentwindowframe.h>
 #endif
-#ifndef WIN32
+#ifdef HAS_FLUENTUI3_STYLE_LIB
 #include "fluentui3style.h"
 #endif
 
@@ -131,11 +131,17 @@ void applyStandardMenuIcons(QMenu *menu, QWidget *widget);
 
 static void refreshFluentStyle()
 {
-#ifdef WIN32
+#ifdef Q_OS_WIN
     qApp->setStyle("FluentUI3");
-#else
+#elif defined(HAS_FLUENTUI3_STYLE_LIB)
     qApp->setStyle(new FluentUI3Style);
 #endif
+}
+
+static void applyAccentColor(const QColor &color)
+{
+    qApp->setProperty("_q_accent_color", color.isValid() ? QVariant(color) : QVariant());
+    refreshFluentStyle();
 }
 
 #ifdef Q_OS_WIN
@@ -1167,6 +1173,10 @@ void MainWindow::setupTitleBarChrome()
         setTopMost(this, checked);
         titleBar->setPinned(checked);
     });
+
+    connect(titleBar, &FluentTitleBar::accentColorChanged, this, [](const QColor &color) {
+        applyAccentColor(color);
+    });
 #endif
 }
 
@@ -1180,11 +1190,7 @@ void MainWindow::applyThemeIndex(int index)
     }
 
     qApp->setProperty("_q_colorscheme", index);
-#ifdef WIN32
-    qApp->setStyle("FluentUI3");
-#else
-    qApp->setStyle(new FluentUI3Style);
-#endif
+    refreshFluentStyle();
     updateActionIcons();
 
     if (index == 0)
@@ -1253,11 +1259,7 @@ void MainWindow::setupColorSchemeSelector(QToolBar *toolBar)
             [this](int index)
             {
                 qApp->setProperty("_q_themestyle", index);
-#ifdef WIN32
-    qApp->setStyle("FluentUI3");
-#else
-    qApp->setStyle(new FluentUI3Style);
-#endif
+                refreshFluentStyle();
                 updateActionIcons();
             });
 

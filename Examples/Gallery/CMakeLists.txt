@@ -77,12 +77,15 @@ target_include_directories(Gallery PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/font-icon
 )
 
+if(TARGET FluentUI3Style)
+    target_link_libraries(Gallery PRIVATE FluentUI3Style)
+endif()
+
 if(WIN32)
     target_compile_definitions(Gallery PRIVATE GALLERY_ENABLE_I18N)
     target_link_libraries(Gallery PRIVATE dbghelp iphlpapi pdh)
 else()
     if(TARGET FluentUI3Style)
-        target_link_libraries(Gallery PRIVATE FluentUI3Style)
         target_compile_definitions(Gallery PRIVATE HAS_FLUENTUI3_STYLE_LIB)
     endif()
     set_target_properties(Gallery PROPERTIES

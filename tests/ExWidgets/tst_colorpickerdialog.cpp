@@ -3,6 +3,7 @@
 
 #include <QLabel>
 #include <QLineEdit>
+#include <QPointer>
 #include <QPushButton>
 #include <QSignalSpy>
 #include <QTabBar>
@@ -20,9 +21,7 @@ private Q_SLOTS:
     void closeRestoresOpeningColor();
     void footerFillsDialog_data();
     void footerFillsDialog();
-    void overlayFollowsHostAndCleansUp();
-    void overlayWithExec();
-    void overlaySurvivesHostDestruction();
+    void isStandardFramedDialogWithoutOverlay();
     void enterOnCancelRejects();
     void selectionSignalSeesFinishedDialog();
     void closeCallbacksDoNotSubmitTwice();
@@ -163,70 +162,22 @@ void ColorPickerDialogTests::footerFillsDialog()
     }
 }
 
-void ColorPickerDialogTests::overlayFollowsHostAndCleansUp()
-{
-    QWidget host;
-    host.resize(900, 700);
-    QWidget page(&host);
-    page.resize(400, 300);
-    host.show();
-    auto *dialog = new ExColorPickerDialog(&page);
-    for (int action = 0; action < 5; ++action)
-    {
-        dialog->open();
-        auto *overlay = host.findChild<QWidget *>(QStringLiteral("exColorPickerDialogOverlay"));
-        QVERIFY(overlay);
-        QVERIFY(overlay->isVisible());
-        QCOMPARE(overlay->parentWidget(), &host);
-        QCOMPARE(overlay->geometry(), host.rect());
-        host.resize(host.width() + 10, host.height() + 10);
-        QCoreApplication::processEvents();
-        QCOMPARE(overlay->geometry(), host.rect());
-        QVERIFY(!overlay->isAncestorOf(dialog));
-        switch (action)
-        {
-        case 0: dialog->accept(); break;
-        case 1: dialog->reject(); break;
-        case 2: dialog->close(); break;
-        case 3: dialog->hide(); break;
-        case 4: delete dialog; break;
-        }
-        QVERIFY(!overlay->isVisible());
-        QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
-        QVERIFY(!host.findChild<QWidget *>(QStringLiteral("exColorPickerDialogOverlay")));
-    }
-}
-
-void ColorPickerDialogTests::overlayWithExec()
+void ColorPickerDialogTests::isStandardFramedDialogWithoutOverlay()
 {
     QWidget host;
     host.resize(900, 700);
     host.show();
     ExColorPickerDialog dialog(&host);
-    bool sawOverlay = false;
-    QTimer::singleShot(0, &dialog, [&]()
-    {
-        auto *overlay = host.findChild<QWidget *>(QStringLiteral("exColorPickerDialogOverlay"));
-        sawOverlay = overlay && overlay->isVisible();
-        dialog.reject();
-    });
-    QCOMPARE(dialog.exec(), int(QDialog::Rejected));
-    QVERIFY(sawOverlay);
-    QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
+    QVERIFY(!(dialog.windowFlags() & Qt::FramelessWindowHint));
+    QVERIFY(!dialog.testAttribute(Qt::WA_TranslucentBackground));
+    dialog.open();
+    QVERIFY(dialog.isVisible());
     QVERIFY(!host.findChild<QWidget *>(QStringLiteral("exColorPickerDialogOverlay")));
-}
-
-void ColorPickerDialogTests::overlaySurvivesHostDestruction()
-{
-    auto *host = new QWidget;
-    host->show();
-    QPointer<ExColorPickerDialog> dialog = new ExColorPickerDialog(host);
-    dialog->open();
-    QPointer<QWidget> overlay = host->findChild<QWidget *>(QStringLiteral("exColorPickerDialogOverlay"));
-    QVERIFY(overlay);
-    delete host;
-    QVERIFY(!dialog);
-    QVERIFY(!overlay);
+    QVERIFY(!dialog.findChild<QWidget *>(QStringLiteral("exColorPickerDialogOverlay")));
+    dialog.reject();
+    QTimer::singleShot(0, &dialog, [&]() { dialog.reject(); });
+    QCOMPARE(dialog.exec(), int(QDialog::Rejected));
+    QVERIFY(!host.findChild<QWidget *>(QStringLiteral("exColorPickerDialogOverlay")));
 }
 
 void ColorPickerDialogTests::enterOnCancelRejects()
@@ -253,19 +204,15 @@ void ColorPickerDialogTests::selectionSignalSeesFinishedDialog()
     ExColorPickerDialog dialog(&host);
     bool visibleAtSelection = true;
     int resultAtSelection = QDialog::Rejected;
-    bool overlayAtSelection = true;
     connect(&dialog, &ExColorPickerDialog::colorSelected, &dialog, [&]()
     {
         visibleAtSelection = dialog.isVisible();
         resultAtSelection = dialog.result();
-        auto *overlay = host.findChild<QWidget *>(QStringLiteral("exColorPickerDialogOverlay"));
-        overlayAtSelection = overlay && overlay->isVisible();
     });
     dialog.open();
     dialog.accept();
     QVERIFY(!visibleAtSelection);
     QCOMPARE(resultAtSelection, int(QDialog::Accepted));
-    QVERIFY(!overlayAtSelection);
 }
 
 void ColorPickerDialogTests::closeCallbacksDoNotSubmitTwice()
@@ -332,8 +279,6 @@ void ColorPickerDialogTests::acceptedHandlerMayDeleteDialog()
     dialog->open();
     dialog->accept();
     QVERIFY(!dialog);
-    QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
-    QVERIFY(!host.findChild<QWidget *>(QStringLiteral("exColorPickerDialogOverlay")));
 }
 
 void ColorPickerDialogTests::colorFeedbackDoesNotRepeat()

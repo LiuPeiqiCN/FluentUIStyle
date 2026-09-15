@@ -308,9 +308,7 @@ layout->addWidget(picker);
 
 ### ExColorPickerDialog
 
-顶部标题，底部独立操作区：左侧主题色「确定」、右侧「取消」，两个按钮等宽填满可用宽度，最小高度 40px。支持浅色和深色主题。
-
-打开时在宿主窗口上显示与 `ExMessageBox` 相同的黑色半透明遮罩，统一采用 WinUI 3 的 `SmokeFillColorDefault`：浅色、深色均为 `#4D000000`（Alpha 77/255，约 30%）。遮罩随宿主窗口调整大小，关闭或销毁对话框时立即移除，不使用动画。
+标准带边框 `QDialog`：系统标题栏显示 `title()`，内容区顶部标题，底部独立操作区：左侧主题色「确定」、右侧「取消」，两个按钮等宽填满可用宽度，最小高度 40px。支持浅色和深色主题。无遮罩层、无无边框窗口。
 
 ```cpp
 #include "excolorpickerdialog.h"

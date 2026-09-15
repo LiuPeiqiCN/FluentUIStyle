@@ -4,13 +4,13 @@
 #include <excolorpickerbutton.h>
 #include <excolorpickerdialog.h>
 
+#include <QCheckBox>
+#include <QComboBox>
+#include <QHBoxLayout>
 #include <QLabel>
 #include <QPushButton>
 #include <QScrollArea>
 #include <QVBoxLayout>
-#include <QHBoxLayout>
-#include <QCheckBox>
-#include <QComboBox>
 
 namespace
 {
@@ -84,18 +84,18 @@ PageColor::PageColor(QWidget *parent)
     dialogButton->setProperty("accent", true);
     auto *dialogSwatch = new QLabel(content);
     dialogSwatch->setFixedSize(40, 32);
-    dialogSwatch->setAutoFillBackground(true);
     auto *dialogResult = new QLabel(content);
     dialogResult->setWordWrap(true);
     auto *dialog = new ExColorPickerDialog(this);
     dialog->setColor(QColor(0x00, 0x78, 0xD4));
     auto updateDialogResult = [dialogSwatch, dialogResult](const QColor &color)
     {
-        QPalette swatchPalette = dialogSwatch->palette();
-        swatchPalette.setColor(QPalette::Window, color);
-        dialogSwatch->setPalette(swatchPalette);
-        dialogSwatch->setToolTip(color.name(QColor::HexArgb).toUpper());
-        dialogResult->setText(tr("已确认颜色：%1").arg(color.name(QColor::HexArgb).toUpper()));
+        const QColor rgb = color.toRgb();
+        dialogSwatch->setStyleSheet(
+            QStringLiteral("background-color: rgba(%1, %2, %3, %4);")
+                .arg(rgb.red()).arg(rgb.green()).arg(rgb.blue()).arg(rgb.alpha()));
+        dialogSwatch->setToolTip(rgb.name(QColor::HexArgb).toUpper());
+        dialogResult->setText(tr("已确认颜色：%1").arg(rgb.name(QColor::HexArgb).toUpper()));
     };
     updateDialogResult(dialog->color());
     connect(dialog, &ExColorPickerDialog::colorSelected, this, updateDialogResult);

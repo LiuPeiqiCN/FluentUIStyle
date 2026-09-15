@@ -59,6 +59,9 @@ compile_commands.json
 /cmake
 .vscode/settings.json
 
+# Local agent progress notes (see AGENTS.md)
+.grok/progress.md
+
 /视频相关资料
 
 # Python virtual environment, cache and IDE configs
@@ -68,3 +71,4 @@ __pycache__/
 *.pyc
 .idea/
 .clang-format
+AGENTS.md

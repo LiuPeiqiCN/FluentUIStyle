@@ -123,7 +123,7 @@ namespace
         for (int row = 0; row < kPaletteRows; ++row)
         {
             for (int col = 0; col < kPaletteColumns; ++col)
-                colors.append(QColor(table[row][col]));
+                colors.append(QColor::fromRgb(table[row][col]));
         }
         return colors;
     }
@@ -738,10 +738,9 @@ ExColorPickerPrivate::ExColorPickerPrivate(ExColorPicker *q)
 
 QColor ExColorPickerPrivate::outputColor() const
 {
-    if (m_alphaEnabled)
-        return m_color;
-    QColor color = m_color;
-    color.setAlpha(255);
+    QColor color = m_color.toRgb();
+    if (!m_alphaEnabled)
+        color.setAlpha(255);
     return color;
 }
 
@@ -1307,8 +1306,21 @@ void ExColorPickerPrivate::setupSlidersConnections()
 
     QObject::connect(hexEdit, &QLineEdit::editingFinished, q, [this]()
                      {
-                         const QString text = hexEdit->text().trimmed();
-                         const QColor parsed(QStringLiteral("#") + text);
+                         QString digits = hexEdit->text().trimmed();
+                         if (digits.startsWith(QLatin1Char('#')))
+                             digits.remove(0, 1);
+                         QColor parsed;
+                         if (digits.size() == 8)
+                         {
+                             bool ok = false;
+                             const uint rgba = digits.toUInt(&ok, 16);
+                             if (ok)
+                                 parsed = QColor::fromRgba(rgba);
+                         }
+                         else if (digits.size() == 6)
+                         {
+                             parsed = QColor(QLatin1Char('#') + digits);
+                         }
                          if (parsed.isValid())
                              applyColor(parsed, true, true);
                      });

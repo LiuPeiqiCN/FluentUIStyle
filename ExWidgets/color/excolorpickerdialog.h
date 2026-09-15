@@ -4,7 +4,6 @@
 
 #include <QColor>
 #include <QDialog>
-#include <QPointer>
 
 class ExColorPicker;
 class QLabel;
@@ -46,17 +45,9 @@ Q_SIGNALS:
 
 protected:
     bool eventFilter(QObject *watched, QEvent *event) override;
-    void paintEvent(QPaintEvent *event) override;
     void changeEvent(QEvent *event) override;
-    void hideEvent(QHideEvent *event) override;
 
 private:
-    void showOverlay();
-    void hideOverlay();
-    void updateOverlayColor();
-
-    QPointer<QWidget> m_overlay;
-    QPointer<QWidget> m_overlayParent;
     ExColorPicker *m_picker = nullptr;
     QLabel *m_titleLabel = nullptr;
     QWidget *m_footer = nullptr;

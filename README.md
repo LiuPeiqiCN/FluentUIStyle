@@ -2,6 +2,11 @@
 # FluentUI3Style：基于Qt的FluentUI3风格实现
 
 [![Platform build](https://github.com/XHY-ChuJian/FluentUIStyle/actions/workflows/build.yml/badge.svg?branch=master)](https://github.com/XHY-ChuJian/FluentUIStyle/actions/workflows/build.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![Qt](https://img.shields.io/badge/Qt-5.12%2B%20%2F%206.x-41cd52)](https://www.qt.io/)
+[![FluentUI](https://img.shields.io/badge/FluentUI-WinUI3-0078D4)](https://github.com/XHY-ChuJian/FluentUIStyle)
+[![Version](https://img.shields.io/github/v/tag/XHY-ChuJian/FluentUIStyle?label=version)](https://github.com/XHY-ChuJian/FluentUIStyle/releases)
+[![Downloads](https://img.shields.io/github/downloads/XHY-ChuJian/FluentUIStyle/total.svg)](https://github.com/XHY-ChuJian/FluentUIStyle/releases)
 
 **English:** [README_EN.md](README_EN.md) | **使用方法:** [USAGE.md](USAGE.md)
 

@@ -222,6 +222,8 @@ ExTeachingTip::ExTeachingTip(QWidget *parent)
           });
   connect(d->m_openAnimation, &QVariantAnimation::finished, this,
           [this]() { stopOpenAnimation(); });
+  // 作为页面子控件时不能随父页面一起显示；只通过 showAt()/setIsOpen(true) 打开。
+  QWidget::setVisible(false);
 }
 
 ExTeachingTip::~ExTeachingTip() {

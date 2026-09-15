@@ -23,6 +23,7 @@ private Q_SLOTS:
     void breadcrumbCanReplacePathInClickHandler();
     void breadcrumbRightToLeft();
     void tipNeedsVisibleTarget();
+    void tipStaysClosedWhenParentPageShows();
     void tipFollowsAndClosesWithTarget();
     void tipClosesWhenPageHides();
     void tipLongTextShrinksBack();
@@ -116,6 +117,28 @@ void NavigationHintTests::tipNeedsVisibleTarget()
     QVERIFY( tip->isOpen() );
     QVERIFY( !tip->isWindow() );
     QCOMPARE( tip->parentWidget(), &host );
+}
+
+void NavigationHintTests::tipStaysClosedWhenParentPageShows()
+{
+    QWidget host;
+    host.resize( 800, 600 );
+    QWidget page( &host );
+    page.setGeometry( host.rect() );
+    auto* tip = new ExTeachingTip( &page );
+    tip->setTitle( QStringLiteral( "试试快捷配置" ) );
+    auto* tourTip = new ExTeachingTip( &page );
+    host.show();
+    QVERIFY( !tip->isOpen() );
+    QVERIFY( !tip->isVisible() );
+    QVERIFY( !tourTip->isOpen() );
+    QVERIFY( !tourTip->isVisible() );
+    page.hide();
+    page.show();
+    QVERIFY( !tip->isOpen() );
+    QVERIFY( !tip->isVisible() );
+    QVERIFY( !tourTip->isOpen() );
+    QVERIFY( !tourTip->isVisible() );
 }
 
 void NavigationHintTests::tipFollowsAndClosesWithTarget()

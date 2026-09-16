@@ -635,6 +635,7 @@ void ComboBoxPopupAnimator::positionPopupForShadow( QWidget* popup )
         const int shadow = FlyoutShadowBorderWidth;
         if ( opensAbove )
         {
+            // QRect::bottom() 包含末像素；减 1 使上下方向的面板间距对称。
             geometry.moveBottom( above.y() - FlyoutPopupOffset - 1 + shadow );
         }
         else
@@ -643,9 +644,8 @@ void ComboBoxPopupAnimator::positionPopupForShadow( QWidget* popup )
         }
     }
 
-    // Before its first native show the popup can still report the primary
-    // screen even when its ComboBox is on another monitor.  Clamp against the
-    // anchor widget's screen so the corrected geometry stays on that monitor.
+    // 首次显示前 popup 的屏幕信息可能尚未更新，按锚点屏幕约束 Y。
+    // X 和宽度保留 showPopup() 的结果，避免再次覆盖 Qt 的水平定位。
     QScreen* targetScreen = nullptr;
 #if QT_VERSION >= QT_VERSION_CHECK( 5, 14, 0 )
     targetScreen = comboBox->screen();
@@ -663,10 +663,6 @@ void ComboBoxPopupAnimator::positionPopupForShadow( QWidget* popup )
     if ( targetScreen )
     {
         const QRect available = targetScreen->availableGeometry();
-        if ( geometry.width() <= available.width() )
-        {
-            geometry.moveLeft( qBound( available.left(), geometry.left(), available.right() - geometry.width() + 1 ) );
-        }
         if ( geometry.height() <= available.height() )
         {
             geometry.moveTop( qBound( available.top(), geometry.top(), available.bottom() - geometry.height() + 1 ) );

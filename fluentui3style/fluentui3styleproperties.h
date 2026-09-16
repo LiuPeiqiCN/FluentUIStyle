@@ -56,6 +56,8 @@ enum ProgressBarStyle
 [[maybe_unused]] constexpr int FlyoutPopupOffset = 3;
 // QComboBox 的可见主题边框相对控件 rect 左右各收进 2 px。
 [[maybe_unused]] constexpr int ComboBoxControlFrameHorizontalInset = 2;
+// 菜单栏高亮区域的水平内缩，绘制与弹出菜单定位共用。
+[[maybe_unused]] constexpr int MenuBarItemHorizontalInset = 5;
 enum DialStyle
 {
     DialDots = 1,

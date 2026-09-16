@@ -237,9 +237,7 @@ private:
             return;
         }
 
-        constexpr int menuBarItemInset = 5;
         constexpr int buttonFrameInset = 2;
-        constexpr int anchoredPopupPixelCorrection = 1;
 
         const QWidget* menuParent = m_menu->parentWidget();
         const int shadow          = FlyoutShadowBorderWidth;
@@ -252,38 +250,18 @@ private:
 
         if ( menuParent && menuParent->inherits( "QMenuBar" ) )
         {
-            // Qt aligns the popup window to the complete MenuBar item.  Align
-            // the visible menu panel to the item's frame, which is inset 5 px.
-            horizontalOffset =
-                rtl ? shadow - menuBarItemInset
-                    : menuBarItemInset - shadow;
-            horizontalOffset +=
-                rtl ? anchoredPopupPixelCorrection
-                    : -anchoredPopupPixelCorrection;
-            const bool opensAbove =
-                m_menu->geometry().center().y()
-                < menuParent->mapToGlobal(
-                      menuParent->rect().center() ).y();
-            // verticalOffset = opensAbove ? shadow : -shadow;
-            verticalOffset = 0;
+            // 与菜单栏高亮绘制共用水平内缩，面板按同一几何边缘对齐。
+            //不知道为啥要减 1，明明两边计算公式一样
+            const int Inset = MenuBarItemHorizontalInset - 1;
+            horizontalOffset = rtl ? shadow - Inset : Inset - shadow;
         }
         else if ( menuParent
                   && menuParent->inherits( "QAbstractButton" ) )
         {
-            // PushButton/ToolButton frames are inset 2 px.  The visible menu
-            // edge must line up with that frame rather than the widget rect.
+            // 按钮边框左右各内缩 2px，居中描边不再需要额外的像素补偿。
             horizontalOffset =
                 rtl ? shadow - buttonFrameInset
                     : buttonFrameInset - shadow;
-            horizontalOffset +=
-                rtl ? anchoredPopupPixelCorrection
-                    : -anchoredPopupPixelCorrection;
-            const bool opensAbove =
-                m_menu->geometry().center().y()
-                < menuParent->mapToGlobal(
-                      menuParent->rect().center() ).y();
-            // verticalOffset = opensAbove ? shadow : -shadow;
-            verticalOffset = 0;
         }
         else if ( menuParent && menuParent->inherits( "QMenu" ) )
         {

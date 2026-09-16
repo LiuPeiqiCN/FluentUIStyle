@@ -96,10 +96,11 @@ static constexpr const char* menuPopupAnimatorProperty = "_q_fluent_menu_popup_a
 static constexpr int sliderHandleDiameter              = 20;
 static constexpr int sliderShadowBorderWidth           = 3;
 
-static QMarginsF comboBoxPopupPanelMargins( const QWidget* popup )
+static QRect comboBoxPopupPanelRect( const QWidget* popup )
 {
-    Q_UNUSED( popup )
-    return QMarginsF( FlyoutShadowBorderWidth, FlyoutShadowBorderWidth, FlyoutShadowBorderWidth, FlyoutShadowBorderWidth );
+    // 面板基于整个透明窗口，避免把 QFrame 的内容边距再次算进绘制区域。
+    return popup->rect().marginsRemoved(
+        QMargins( FlyoutShadowBorderWidth, FlyoutShadowBorderWidth, FlyoutShadowBorderWidth, FlyoutShadowBorderWidth ) );
 }
 
 static constexpr int ProgressBarThickness       = 4;
@@ -1153,64 +1154,19 @@ static void drawRoundedBorderSurface( QPainter* painter,
                                       const QRectF& rect,
                                       qreal radius,
                                       const QBrush& background,
-                                      const QBrush& border,
-                                      qreal borderWidth,
-                                      bool backgroundInsideBorder )
+                                      const QBrush& border )
 {
     if ( !rect.isValid() )
     {
         return;
     }
 
-    // {
-    //     PainterStateGuard guard( painter );
-    //     painter->setRenderHint( QPainter::Antialiasing );
-    //     painter->setPen( QPen(border, borderWidth) );
-    //     painter->setBrush(background);
-    //     painter->drawRoundedRect(rect, radius, radius);
-
-    //     // drawRoundedRect(painter, rect, QPen(border, borderWidth),
-    //     background);
-
-    //     return;
-    // }
-
     PainterStateGuard guard( painter );
     painter->setRenderHint( QPainter::Antialiasing );
-    painter->setPen( Qt::NoPen );
-
-    const qreal width       = qBound( 0.0, borderWidth, qMin( rect.width(), rect.height() ) / 2.0 );
-    const QRectF innerRect  = rect.adjusted( width, width, -width, -width );
-    const qreal innerRadius = qMax( 0.0, radius - width );
-
-    if ( background.style() != Qt::NoBrush )
-    {
-        painter->setBrush( background );
-        if ( backgroundInsideBorder && innerRect.isValid() )
-        {
-            painter->drawRoundedRect( innerRect, innerRadius, innerRadius );
-        }
-        else
-        {
-            painter->drawRoundedRect( rect, radius, radius );
-        }
-    }
-
-    if ( width <= 0.0 || border.style() == Qt::NoBrush )
-    {
-        return;
-    }
-
-    QPainterPath borderPath;
-    borderPath.setFillRule( Qt::OddEvenFill );
-    borderPath.addRoundedRect( rect, radius, radius );
-    if ( innerRect.isValid() )
-    {
-        borderPath.addRoundedRect( innerRect, innerRadius, innerRadius );
-    }
-
-    painter->setBrush( border );
-    painter->drawPath( borderPath );
+    // 与锚点控件共用居中 1px 描边，无须额外扩张面板来补偿内侧描边。
+    painter->setPen( QPen( border, 1 ) );
+    painter->setBrush( background );
+    painter->drawRoundedRect( rect, radius, radius );
 }
 
 inline void
@@ -2796,14 +2752,15 @@ void FluentUI3Style::drawPrimitive( PrimitiveElement element, const QStyleOption
             {
                 break;
             }
-            drawPopupShadow( painter, panelRect, cBRoundingRadius, FlyoutShadowBorderWidth );
+            const qreal radius = widget && widget->inherits( "QComboBoxPrivateContainer" )
+                                     ? secondLevelRoundingRadius
+                                     : cBRoundingRadius;
+            drawPopupShadow( painter, panelRect, radius, FlyoutShadowBorderWidth );
             drawRoundedBorderSurface( painter,
                                       panelRect,
-                                      cBRoundingRadius,
+                                      radius,
                                       highContrastTheme ? option->palette.window() : QBrush( winUI3Color( acrylicInAppFillFallback ) ),
-                                      highContrastTheme ? option->palette.windowText() : QBrush( winUI3Color( surfaceStrokeFlyout ) ),
-                                      highContrastTheme ? 2.0 : 1.0,
-                                      true );
+                                      highContrastTheme ? option->palette.windowText() : QBrush( winUI3Color( surfaceStrokeFlyout ) ) );
             break;
         }
         case PE_FrameTabWidget :
@@ -3166,7 +3123,7 @@ void FluentUI3Style::drawPrimitive( PrimitiveElement element, const QStyleOption
                 if ( isComboPopup )
                 {
                     QStyleOption popupOpt( *option );
-                    popupOpt.rect = rect.marginsRemoved( comboBoxPopupPanelMargins( widget ) ).toRect();
+                    popupOpt.rect = comboBoxPopupPanelRect( widget );
                     proxy()->drawPrimitive( PrimitiveElement( PE_FluentFlyoutSurface ), &popupOpt, painter, widget );
                     break;
                 }
@@ -3987,29 +3944,9 @@ QRect FluentUI3Style::subControlRect( ComplexControl control,
 
                         const int inset  = ComboBoxControlFrameHorizontalInset;
                         const int shadow = FlyoutShadowBorderWidth;
-                        // ComboBox 主体用居中 1px QPen：Qt5 外缘会多扩约 1px，
-                        // popup 内描边从几何边开始，故 Qt5 多补 1px。
-#    if QT_VERSION < QT_VERSION_CHECK( 6, 0, 0 )
-                        constexpr int panelHorizontalExpansion = 2;
-#    else
-                        constexpr int panelHorizontalExpansion = 2;
-#    endif
-
-                        const QRect outer     = option->rect;
-                        const int frameWidth  = outer.width() - 2 * inset;
-                        const int panelWidth  = frameWidth + panelHorizontalExpansion;
-                        const int windowWidth = panelWidth + 2 * shadow;
-                        const int xOffset     = inset - shadow - ( panelHorizontalExpansion - 1 );
-
-                        if ( option->direction == Qt::RightToLeft )
-                        {
-                            const int windowRight = outer.right() - inset + shadow + ( panelHorizontalExpansion - 1 );
-                            ret.setRect( windowRight - windowWidth + 1, ret.top(), windowWidth, ret.height() );
-                        }
-                        else
-                        {
-                            ret.setRect( outer.left() + xOffset, ret.top(), windowWidth, ret.height() );
-                        }
+                        // 主体与面板的描边中心线重合；左右内缩相同，LTR / RTL 共用几何。
+                        const QRect frameRect = option->rect.marginsRemoved( QMargins( inset, 0, inset, 0 ) );
+                        ret.setRect( frameRect.left() - shadow, ret.top(), frameRect.width() + 2 * shadow, ret.height() );
                         break;
                     }
                     default :
@@ -6047,7 +5984,7 @@ void FluentUI3Style::drawControl( ControlElement element, const QStyleOption* op
                 if ( isComboPopup )
                 {
                     QStyleOption popupOpt( *option );
-                    popupOpt.rect = QRectF( option->rect ).marginsRemoved( comboBoxPopupPanelMargins( widget ) ).toRect();
+                    popupOpt.rect = comboBoxPopupPanelRect( widget );
                     proxy()->drawPrimitive( PrimitiveElement( PE_FluentFlyoutSurface ), &popupOpt, painter, widget );
                     break;
                 }
@@ -6631,10 +6568,12 @@ void FluentUI3Style::drawControl( ControlElement element, const QStyleOption* op
                     }
                     if ( pen != Qt::NoPen || brush != Qt::NoBrush )
                     {
-                        // 调整菜单栏MenuItem的绘制区域，弹窗Menu更靠近MenuItem的左边界，符合WinUI3设计规范
-                        // QMargins( 2, 0, 2, 0 )
-                        const QRect rect = mbi->rect.marginsRemoved( QMargins( 5, 0, 5, 0 ) );
-                        drawRoundedRect( painter, rect, pen, brush );
+                        // 绘制与菜单定位共用水平内缩。
+                        QRect rect = QRect( mbi->rect ).marginsRemoved( QMargins( MenuBarItemHorizontalInset, 0, MenuBarItemHorizontalInset, 0 ) );
+                        qreal radius = secondLevelRoundingRadius;
+                        painter->setPen( pen );
+                        painter->setBrush( brush );
+                        painter->drawRoundedRect( rect, radius, radius );
                     }
                 }
                 newMbi.rect.adjust( hPadding, topPadding, -hPadding, -bottomPadding );

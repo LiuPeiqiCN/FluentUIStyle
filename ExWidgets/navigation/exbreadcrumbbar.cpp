@@ -1,45 +1,79 @@
 #include "exbreadcrumbbar.h"
+#include "exfonticon.h"
 
 #include <QAbstractItemDelegate>
 #include <QAction>
 #include <QApplication>
+#include <QFont>
+#include <QFontMetrics>
 #include <QKeyEvent>
 #include <QMenu>
 #include <QPainter>
 #include <QPainterPath>
 #include <QPersistentModelIndex>
+#include <QPointer>
 #include <QStandardItemModel>
 #include <QStyle>
+#include <QStyleOptionFocusRect>
 #include <QStyleOptionViewItem>
 #include <QToolButton>
 #include <QWidgetAction>
 
-namespace
-{
-// WinUI BreadcrumbBarChevronFontSize=12，ChevronPadding=2,0。
-constexpr int SeparatorWidth = 16;
+namespace {
+// WinUI 3 BreadcrumbBarChevronFontSize=12，Chevron 区域宽度 16px
+constexpr int SeparatorWidth        = 16;
+constexpr int ItemHorizontalPadding = 8;
+constexpr int ItemHeight            = 28;
+constexpr qreal ItemCornerRadius    = 4.0;
 
 class BreadcrumbButton final : public QToolButton
 {
 public:
-    explicit BreadcrumbButton( QWidget* parent ) : QToolButton( parent )
+    explicit BreadcrumbButton( QWidget* parent = nullptr )
+        : QToolButton( parent )
     {
         setAutoRaise( true );
         setFocusPolicy( Qt::StrongFocus );
         setToolButtonStyle( Qt::ToolButtonTextOnly );
+        setAttribute( Qt::WA_Hover, true );
     }
 
     QPointer<QAbstractItemDelegate> itemTemplate;
     QPersistentModelIndex modelIndex;
-    bool current = false;
-    bool dropDown = false;
+    bool current    = false;
+    bool isOverflow = false;
+    bool dropDown   = false;
+
+    void updateInteraction()
+    {
+        if ( current )
+        {
+            setCursor( Qt::ArrowCursor );
+        }
+        else
+        {
+            setCursor( Qt::PointingHandCursor );
+        }
+    }
 
     QSize sizeHint() const override
     {
-        QSize contentSize( fontMetrics().horizontalAdvance( text() ), qMax( 20, fontMetrics().height() ) );
         if ( itemTemplate && modelIndex.isValid() )
-            contentSize = itemTemplate->sizeHint( viewOption(), modelIndex );
-        return contentSize.expandedTo( QSize( 10, 20 ) ) + ( dropDown ? QSize( 22, 16 ) : QSize( 2, 6 ) );
+        {
+            const QSize delegateSize = itemTemplate->sizeHint( viewOption(), modelIndex );
+            return QSize( delegateSize.width() + ItemHorizontalPadding * 2, qMax( ItemHeight, delegateSize.height() ) );
+        }
+
+        QFont itemFont = font();
+        if ( current )
+        {
+            itemFont.setBold( true );
+        }
+        const QFontMetrics fm( itemFont );
+        const int textW = fm.horizontalAdvance( text() );
+        const int w     = textW + ItemHorizontalPadding * 2;
+        const int h     = qMax( ItemHeight, fm.height() + 8 );
+        return QSize( w, h );
     }
 
 protected:
@@ -47,27 +81,72 @@ protected:
     {
         QPainter painter( this );
         painter.setRenderHint( QPainter::Antialiasing );
-        auto option = viewOption();
-        if ( dropDown && ( underMouse() || hasFocus() || isDown() ) )
+
+        const bool isDark      = palette().color( QPalette::Window ).lightness() < 128;
+        const bool interactive = !current || isOverflow || dropDown;
+
+        // 1. WinUI 3 Subtle 悬停/按下卡片微底色（当前项/最后一项不绘制背景）
+        if ( interactive && ( underMouse() || isDown() ) )
         {
-            QColor hover = palette().color( QPalette::WindowText );
-            hover.setAlpha( isDown() ? 20 : 12 );
+            QColor hoverColor;
+            if ( isDown() )
+            {
+                hoverColor = isDark ? QColor( 255, 255, 255, 24 ) : QColor( 0, 0, 0, 24 );
+            }
+            else
+            {
+                hoverColor = isDark ? QColor( 255, 255, 255, 18 ) : QColor( 0, 0, 0, 15 );
+            }
             painter.setPen( Qt::NoPen );
-            painter.setBrush( hover );
-            painter.drawRoundedRect( rect().adjusted( 1, 1, -1, -1 ), 4, 4 );
+            painter.setBrush( hoverColor );
+            painter.drawRoundedRect( QRectF( rect() ).adjusted( 0.5, 0.5, -0.5, -0.5 ), ItemCornerRadius, ItemCornerRadius );
         }
+
+        // 2. 自定义 ItemTemplate 委托绘制
         if ( itemTemplate && modelIndex.isValid() )
+        {
+            painter.save();
+            auto option = viewOption();
             itemTemplate->paint( &painter, option, modelIndex );
+            painter.restore();
+        }
         else
         {
-            QColor color = palette().color( isEnabled() ? QPalette::Active : QPalette::Disabled, QPalette::WindowText );
-            // 行内项保持透明背景，只改变文字颜色；末项不是带高亮底色的按钮。
-            if ( isEnabled() && !current && !dropDown )
-                color.setAlphaF( color.alphaF() * ( isDown() ? 0.45 : underMouse() ? 0.70 : 1.0 ) );
-            painter.setPen( color );
-            painter.drawText( option.rect, Qt::AlignVCenter | Qt::AlignLeading,
-                              fontMetrics().elidedText( text(), Qt::ElideRight, option.rect.width() ) );
+            // 3. WinUI 3 标准分级文字绘制
+            QFont textFont = font();
+            if ( current )
+            {
+                textFont.setBold( true );
+            }
+            painter.setFont( textFont );
+            const QFontMetrics fm( textFont );
+
+            QColor textColor = palette().color( isEnabled() ? QPalette::Active : QPalette::Disabled, QPalette::WindowText );
+            if ( isEnabled() )
+            {
+                if ( current )
+                {
+                    // 当前项：主文字色（100% WindowText）高亮加粗
+                }
+                else if ( underMouse() )
+                {
+                    // 悬停祖先项：提亮为主文字色
+                }
+                else
+                {
+                    // 常规祖先项：次级文字色（TextFillColorSecondary，约 72% alpha）
+                    textColor.setAlphaF( textColor.alphaF() * 0.72 );
+                }
+            }
+
+            const QRect textRect = rect().adjusted( ItemHorizontalPadding, 0, -ItemHorizontalPadding, 0 );
+            painter.setPen( textColor );
+            painter.drawText( textRect,
+                              Qt::AlignVCenter | Qt::AlignLeading | Qt::TextSingleLine,
+                              fm.elidedText( text(), Qt::ElideRight, qMax( 0, textRect.width() ) ) );
         }
+
+        // 4. 键盘焦点框
         if ( hasFocus() )
         {
             QStyleOptionFocusRect focus;
@@ -83,296 +162,455 @@ private:
         QStyleOptionViewItem option;
         option.initFrom( this );
         option.font = font();
-        option.fontMetrics = fontMetrics();
-        option.widget = this;
-        option.rect = rect().adjusted( dropDown ? 11 : 1, dropDown ? 7 : 3,
-                                       dropDown ? -11 : -1, dropDown ? -9 : -3 );
-        option.textElideMode = Qt::ElideRight;
+        if ( current )
+        {
+            option.font.setBold( true );
+        }
+        option.fontMetrics      = QFontMetrics( option.font );
+        option.widget           = this;
+        option.rect             = rect().adjusted( ItemHorizontalPadding, 2, -ItemHorizontalPadding, -2 );
+        option.textElideMode    = Qt::ElideRight;
         option.displayAlignment = Qt::AlignVCenter | Qt::AlignLeading;
         return option;
     }
 };
-}
+}  // namespace
 
-ExBreadcrumbBar::ExBreadcrumbBar( QWidget* parent ) : QWidget( parent )
+class ExBreadcrumbBarPrivate
 {
-    QFont itemFont = font();
-    itemFont.setPixelSize( 14 );
-    setFont( itemFont );
-    setSizePolicy( QSizePolicy::Expanding, QSizePolicy::Fixed );
-    m_model = new QStandardItemModel( this );
-    m_overflowButton = new BreadcrumbButton( this );
-    m_overflowButton->setText( QStringLiteral( "\u2026" ) );
-    m_overflowButton->setAccessibleName( tr( "上级路径" ) );
-    m_overflowButton->setToolTip( tr( "显示折叠的路径" ) );
-    m_overflowButton->setPopupMode( QToolButton::InstantPopup );
-    m_overflowMenu = new QMenu( m_overflowButton );
-    m_overflowButton->setMenu( m_overflowMenu );
-    m_overflowButton->installEventFilter( this );
-    m_overflowButton->hide();
-}
+    Q_DECLARE_PUBLIC( ExBreadcrumbBar )
 
-ExBreadcrumbBar::~ExBreadcrumbBar()
-{
-    disconnect( m_templateDestroyed );
-    disconnect( m_templateSizeChanged );
-}
-
-QVariantList ExBreadcrumbBar::itemsSource() const { return m_items; }
-void ExBreadcrumbBar::setItemsSource( const QVariantList& items )
-{
-    if ( items == m_items )
-        return;
-    m_items = items;
-    rebuildItems();
-    Q_EMIT itemsSourceChanged( m_items );
-}
-
-QAbstractItemDelegate* ExBreadcrumbBar::itemTemplate() const { return m_itemTemplate.data(); }
-void ExBreadcrumbBar::setItemTemplate( QAbstractItemDelegate* itemTemplate )
-{
-    if ( itemTemplate == m_itemTemplate )
-        return;
-    disconnect( m_templateDestroyed );
-    disconnect( m_templateSizeChanged );
-    m_itemTemplate = itemTemplate;
-    if ( itemTemplate )
+public:
+    explicit ExBreadcrumbBarPrivate( ExBreadcrumbBar* q )
+        : q_ptr( q )
     {
-        m_templateDestroyed = connect( itemTemplate, &QObject::destroyed, this, [this]()
-        {
-            m_itemTemplate.clear();
-            rebuildItems();
-            Q_EMIT itemTemplateChanged( nullptr );
-        } );
-        m_templateSizeChanged = connect( itemTemplate, &QAbstractItemDelegate::sizeHintChanged, this, [this]()
-        {
-            layoutItems();
-            updateGeometry();
-        } );
     }
-    rebuildItems();
-    Q_EMIT itemTemplateChanged( itemTemplate );
+
+    ExBreadcrumbBar* q_ptr = nullptr;
+    QVariantList items;
+    QStandardItemModel* model = nullptr;
+    QPointer<QAbstractItemDelegate> itemTemplate;
+    QMetaObject::Connection templateDestroyed;
+    QMetaObject::Connection templateSizeChanged;
+    QList<BreadcrumbButton*> buttons;
+    BreadcrumbButton* overflowButton = nullptr;
+    QMenu* overflowMenu              = nullptr;
+    QList<QRect> separators;
+    int firstVisible = -1;
+
+    void setupUi();
+    void layoutItems();
+    void rebuildItems();
+    void activateItem( int index );
+};
+
+void ExBreadcrumbBarPrivate::setupUi()
+{
+    QFont itemFont = q_ptr->font();
+    itemFont.setPixelSize( 14 );
+    q_ptr->setFont( itemFont );
+    q_ptr->setSizePolicy( QSizePolicy::Expanding, QSizePolicy::Fixed );
+
+    model                      = new QStandardItemModel( q_ptr );
+    overflowButton             = new BreadcrumbButton( q_ptr );
+    overflowButton->isOverflow = true;
+    overflowButton->setText( QStringLiteral( "\u2026" ) );
+    overflowButton->setAccessibleName( ExBreadcrumbBar::tr( "上级路径" ) );
+    overflowButton->setToolTip( ExBreadcrumbBar::tr( "显示折叠的路径" ) );
+    overflowButton->setPopupMode( QToolButton::InstantPopup );
+    overflowButton->updateInteraction();
+
+    overflowMenu = new QMenu( overflowButton );
+    overflowButton->setMenu( overflowMenu );
+    overflowButton->installEventFilter( q_ptr );
+    overflowButton->hide();
 }
 
-void ExBreadcrumbBar::rebuildItems()
+void ExBreadcrumbBarPrivate::rebuildItems()
 {
-    QWidget* focused = QApplication::focusWidget();
-    const bool hadFocus = focused && ( focused == this || isAncestorOf( focused ) );
-    m_overflowMenu->hide();
-    m_overflowMenu->clear();
-    for ( auto* button : m_buttons )
+    QWidget* focused    = QApplication::focusWidget();
+    const bool hadFocus = focused && ( focused == q_ptr || q_ptr->isAncestorOf( focused ) );
+
+    overflowMenu->hide();
+    overflowMenu->clear();
+
+    for ( auto* button : buttons )
     {
         button->hide();
-        button->removeEventFilter( this );
-        disconnect( button, nullptr, this, nullptr );
-        // 点击回调允许同步替换路径；不要在按钮自身的事件处理中销毁它。
+        button->removeEventFilter( q_ptr );
+        QObject::disconnect( button, nullptr, q_ptr, nullptr );
         button->deleteLater();
     }
-    m_buttons.clear();
-    m_model->clear();
-    for ( int i = 0; i < m_items.size(); ++i )
+    buttons.clear();
+    model->clear();
+
+    const int count = items.size();
+    for ( int i = 0; i < count; ++i )
     {
-        auto* item = new QStandardItem( m_items.at( i ).toString() );
-        item->setData( m_items.at( i ), Qt::UserRole );
-        m_model->appendRow( item );
-        auto* button = new BreadcrumbButton( this );
-        button->modelIndex = m_model->index( i, 0 );
-        button->itemTemplate = m_itemTemplate;
-        button->current = i == m_items.size() - 1;
+        auto* item = new QStandardItem( items.at( i ).toString() );
+        item->setData( items.at( i ), Qt::UserRole );
+        model->appendRow( item );
+
+        auto* button         = new BreadcrumbButton( q_ptr );
+        button->modelIndex   = model->index( i, 0 );
+        button->itemTemplate = itemTemplate;
+        button->current      = ( i == count - 1 );
+        button->updateInteraction();
         button->setText( item->text() );
         button->setAccessibleName( item->text() );
         button->setToolTip( item->text() );
-        button->installEventFilter( this );
-        connect( button, &QToolButton::clicked, this, [this, i]() { activateItem( i ); } );
-        m_buttons.append( button );
+        button->installEventFilter( q_ptr );
+
+        // WinUI 3 规范：最后一项是只读的当前位置标识，不可点击；祖先项点击触发 itemClicked
+        if ( !button->current )
+        {
+            QObject::connect( button, &QToolButton::clicked, q_ptr, [ this, i ]() { activateItem( i ); } );
+        }
+
+        buttons.append( button );
     }
-    m_firstVisible = -1;
+
+    firstVisible = -1;
     layoutItems();
-    if ( hadFocus && !m_buttons.isEmpty() )
-        m_buttons.last()->setFocus( Qt::OtherFocusReason );
-    updateGeometry();
-}
-
-void ExBreadcrumbBar::activateItem( int index )
-{
-    if ( index < 0 || index >= m_items.size() )
-        return;
-    const QVariant item = m_items.at( index );
-    Q_EMIT itemClicked( index, item );
-}
-
-QSize ExBreadcrumbBar::sizeHint() const
-{
-    int w = 0;
-    int h = qMax( 26, fontMetrics().height() + 6 );
-    for ( const auto* button : m_buttons )
+    if ( hadFocus && !buttons.isEmpty() )
     {
-        w += button->sizeHint().width();
-        h = qMax( h, button->sizeHint().height() );
+        buttons.last()->setFocus( Qt::OtherFocusReason );
     }
-    return QSize( w + qMax( 0, int( m_buttons.size() ) - 1 ) * SeparatorWidth, h );
-}
-QSize ExBreadcrumbBar::minimumSizeHint() const
-{
-    return QSize( m_items.isEmpty() ? 0 : ( m_items.size() == 1 ? 16 : 56 ), sizeHint().height() );
+    q_ptr->updateGeometry();
 }
 
-void ExBreadcrumbBar::layoutItems()
+void ExBreadcrumbBarPrivate::activateItem( int index )
 {
-    if ( !m_overflowButton || !m_overflowMenu )
-        return;
-    m_separators.clear();
-    const int count = int( m_buttons.size() );
-    const int available = qMax( 0, contentsRect().width() );
-    const int overflowWidth = qMax( 20, m_overflowButton->sizeHint().width() );
-    int first = 0;
-    // 对齐 BreadcrumbLayout：先测量全部项，再从末项向前寻找可完整保留的后缀。
-    if ( count > 1 && sizeHint().width() > available )
+    if ( index < 0 || index >= items.size() )
     {
-        first = count - 1;
-        int used = overflowWidth + SeparatorWidth + m_buttons.last()->sizeHint().width();
-        while ( first > 1 && used + SeparatorWidth + m_buttons.at( first - 1 )->sizeHint().width() <= available )
+        return;
+    }
+    const QVariant item = items.at( index );
+    Q_EMIT q_ptr->itemClicked( index, item );
+}
+
+void ExBreadcrumbBarPrivate::layoutItems()
+{
+    if ( !overflowButton || !overflowMenu )
+    {
+        return;
+    }
+    separators.clear();
+
+    const int count         = int( buttons.size() );
+    const int available     = qMax( 0, q_ptr->contentsRect().width() );
+    const int overflowWidth = qMax( 28, overflowButton->sizeHint().width() );
+
+    int first = 0;
+    // WinUI 3 BreadcrumbLayout：从末尾项向前保留可完整容纳的项目
+    if ( count > 1 && q_ptr->sizeHint().width() > available )
+    {
+        first    = count - 1;
+        int used = overflowWidth + SeparatorWidth + buttons.last()->sizeHint().width();
+        while ( first > 1 && used + SeparatorWidth + buttons.at( first - 1 )->sizeHint().width() <= available )
         {
             --first;
-            used += SeparatorWidth + m_buttons.at( first )->sizeHint().width();
+            used += SeparatorWidth + buttons.at( first )->sizeHint().width();
         }
     }
-    if ( first != m_firstVisible )
+
+    if ( first != firstVisible )
     {
-        m_overflowMenu->hide();
-        m_overflowMenu->clear();
-        // WinUI CloneEllipsisItemSource 按逆序展示：最近的上级最先出现。
+        overflowMenu->hide();
+        qDeleteAll( overflowMenu->actions() );
+        overflowMenu->clear();
+        // WinUI 3 CloneEllipsisItemSource 逆序排列（最近的父级在最上方）
         for ( int i = first - 1; i >= 0; --i )
         {
             QAction* action = nullptr;
-            if ( m_itemTemplate )
+            if ( itemTemplate )
             {
-                auto* widgetAction = new QWidgetAction( m_overflowMenu );
-                auto* button = new BreadcrumbButton( m_overflowMenu );
-                button->dropDown = true;
-                button->itemTemplate = m_itemTemplate;
-                button->modelIndex = m_model->index( i, 0 );
-                button->setText( m_items.at( i ).toString() );
+                auto* widgetAction   = new QWidgetAction( overflowMenu );
+                auto* button         = new BreadcrumbButton( overflowMenu );
+                button->dropDown     = true;
+                button->itemTemplate = itemTemplate;
+                button->modelIndex   = model->index( i, 0 );
+                button->setText( items.at( i ).toString() );
+                button->updateInteraction();
                 widgetAction->setDefaultWidget( button );
-                m_overflowMenu->addAction( widgetAction );
-                connect( button, &QToolButton::clicked, widgetAction, [this, widgetAction]()
-                {
-                    m_overflowMenu->hide();
-                    widgetAction->trigger();
-                } );
+                overflowMenu->addAction( widgetAction );
+                QObject::connect( button,
+                                  &QToolButton::clicked,
+                                  widgetAction,
+                                  [ this, widgetAction ]()
+                                  {
+                                      overflowMenu->hide();
+                                      widgetAction->trigger();
+                                  } );
                 action = widgetAction;
             }
             else
             {
-                QString text = m_items.at( i ).toString();
+                QString text = items.at( i ).toString();
                 text.replace( QStringLiteral( "&" ), QStringLiteral( "&&" ) );
-                action = m_overflowMenu->addAction( text );
+                action = overflowMenu->addAction( text );
             }
-            connect( action, &QAction::triggered, this, [this, i]() { activateItem( i ); } );
+            QObject::connect( action, &QAction::triggered, q_ptr, [ this, i ]() { activateItem( i ); } );
         }
-        m_firstVisible = first;
+        firstVisible = first;
     }
+
     const bool overflow = first > 0;
-    m_overflowButton->setVisible( overflow );
-    int x = contentsRect().left();
-    const int h = qMin( contentsRect().height(), sizeHint().height() );
-    const int y = contentsRect().top() + ( contentsRect().height() - h ) / 2;
-    const auto place = [this, y, h]( QWidget* widget, int left, int w )
-    {
-        widget->setGeometry( QStyle::visualRect( layoutDirection(), contentsRect(), QRect( left, y, qMax( 0, w ), h ) ) );
-    };
+    overflowButton->setVisible( overflow );
+
+    int x       = q_ptr->contentsRect().left();
+    const int h = qMin( q_ptr->contentsRect().height(), q_ptr->sizeHint().height() );
+    const int y = q_ptr->contentsRect().top() + ( q_ptr->contentsRect().height() - h ) / 2;
+
+    const auto place = [ this, y, h ]( QWidget* widget, int left, int w )
+    { widget->setGeometry( QStyle::visualRect( q_ptr->layoutDirection(), q_ptr->contentsRect(), QRect( left, y, qMax( 0, w ), h ) ) ); };
+
+    // 放置溢出按钮与后续分隔符
     if ( overflow )
     {
-        place( m_overflowButton, x, qMin( available, overflowWidth ) );
+        place( overflowButton, x, qMin( available, overflowWidth ) );
         x += overflowWidth;
+        separators.append( QStyle::visualRect( q_ptr->layoutDirection(), q_ptr->contentsRect(), QRect( x, y, SeparatorWidth, h ) ) );
+        x += SeparatorWidth;
     }
+
     bool restoreFocus = false;
     for ( int i = 0; i < count; ++i )
     {
-        auto* button = m_buttons.at( i );
-        restoreFocus |= i < first && button->hasFocus();
+        auto* button = buttons.at( i );
+        restoreFocus |= ( i < first && button->hasFocus() );
         button->setVisible( i >= first );
         if ( i < first )
-            continue;
-        if ( i > first || overflow )
         {
-            m_separators.append( QStyle::visualRect( layoutDirection(), contentsRect(), QRect( x, y, SeparatorWidth, h ) ) );
+            continue;
+        }
+
+        // 若不是第一个可见项（且之前没加溢出分隔符），则在它前面添加 Chevron 分隔符
+        if ( i > first )
+        {
+            separators.append( QStyle::visualRect( q_ptr->layoutDirection(), q_ptr->contentsRect(), QRect( x, y, SeparatorWidth, h ) ) );
             x += SeparatorWidth;
         }
-        const int w = qMin( button->sizeHint().width(), qMax( 0, contentsRect().right() + 1 - x ) );
+
+        const int w = qMin( button->sizeHint().width(), qMax( 0, q_ptr->contentsRect().right() + 1 - x ) );
         place( button, x, w );
         x += w;
     }
+
     if ( restoreFocus )
-        m_overflowButton->setFocus( Qt::OtherFocusReason );
-    setFocusProxy( overflow ? m_overflowButton : ( count ? m_buttons.first() : nullptr ) );
-    update();
+    {
+        overflowButton->setFocus( Qt::OtherFocusReason );
+    }
+    q_ptr->setFocusProxy( overflow ? overflowButton : ( count ? buttons.first() : nullptr ) );
+    q_ptr->update();
+}
+
+ExBreadcrumbBar::ExBreadcrumbBar( QWidget* parent )
+    : QWidget( parent )
+    , d_ptr( new ExBreadcrumbBarPrivate( this ) )
+{
+    Q_D( ExBreadcrumbBar );
+    d->setupUi();
+}
+
+ExBreadcrumbBar::~ExBreadcrumbBar()
+{
+    Q_D( ExBreadcrumbBar );
+    disconnect( d->templateDestroyed );
+    disconnect( d->templateSizeChanged );
+}
+
+QVariantList ExBreadcrumbBar::itemsSource() const
+{
+    Q_D( const ExBreadcrumbBar );
+    return d->items;
+}
+
+void ExBreadcrumbBar::setItemsSource( QVariantList items )
+{
+    Q_D( ExBreadcrumbBar );
+    if ( items == d->items )
+    {
+        return;
+    }
+    d->items = std::move( items );
+    d->rebuildItems();
+    Q_EMIT itemsSourceChanged( d->items );
+}
+
+void ExBreadcrumbBar::setItemsSource( const QStringList& items )
+{
+    QVariantList list;
+    list.reserve( items.size() );
+    for ( const QString& str : items )
+    {
+        list.append( str );
+    }
+    setItemsSource( list );
+}
+
+QAbstractItemDelegate* ExBreadcrumbBar::itemTemplate() const
+{
+    Q_D( const ExBreadcrumbBar );
+    return d->itemTemplate.data();
+}
+
+void ExBreadcrumbBar::setItemTemplate( QAbstractItemDelegate* itemTemplate )
+{
+    Q_D( ExBreadcrumbBar );
+    if ( itemTemplate == d->itemTemplate )
+    {
+        return;
+    }
+    disconnect( d->templateDestroyed );
+    disconnect( d->templateSizeChanged );
+    d->itemTemplate = itemTemplate;
+    if ( itemTemplate )
+    {
+        d->templateDestroyed   = connect( itemTemplate,
+                                          &QObject::destroyed,
+                                          this,
+                                          [ this ]()
+                                          {
+                                            Q_D( ExBreadcrumbBar );
+                                            d->itemTemplate.clear();
+                                            d->rebuildItems();
+                                            Q_EMIT itemTemplateChanged( nullptr );
+                                          } );
+        d->templateSizeChanged = connect( itemTemplate,
+                                          &QAbstractItemDelegate::sizeHintChanged,
+                                          this,
+                                          [ this ]()
+                                          {
+                                              Q_D( ExBreadcrumbBar );
+                                              d->layoutItems();
+                                              updateGeometry();
+                                          } );
+    }
+    d->rebuildItems();
+    Q_EMIT itemTemplateChanged( itemTemplate );
+}
+
+QSize ExBreadcrumbBar::sizeHint() const
+{
+    Q_D( const ExBreadcrumbBar );
+    int w = 0;
+    int h = qMax( 32, fontMetrics().height() + 10 );
+    for ( const auto* button : d->buttons )
+    {
+        w += button->sizeHint().width();
+        h = qMax( h, button->sizeHint().height() );
+    }
+    const int sepCount = qMax( 0, int( d->buttons.size() ) - 1 );
+    return QSize( w + sepCount * SeparatorWidth, h );
+}
+
+QSize ExBreadcrumbBar::minimumSizeHint() const
+{
+    Q_D( const ExBreadcrumbBar );
+    return QSize( d->items.isEmpty() ? 0 : ( d->items.size() == 1 ? 16 : 56 ), sizeHint().height() );
 }
 
 void ExBreadcrumbBar::resizeEvent( QResizeEvent* event )
 {
     QWidget::resizeEvent( event );
-    layoutItems();
+    Q_D( ExBreadcrumbBar );
+    d->layoutItems();
 }
+
 void ExBreadcrumbBar::changeEvent( QEvent* event )
 {
     QWidget::changeEvent( event );
-    if ( event->type() == QEvent::FontChange || event->type() == QEvent::StyleChange
-         || event->type() == QEvent::LayoutDirectionChange )
+    if ( event->type() == QEvent::FontChange || event->type() == QEvent::StyleChange || event->type() == QEvent::LayoutDirectionChange
+         || event->type() == QEvent::PaletteChange )
     {
-        layoutItems();
+        Q_D( ExBreadcrumbBar );
+        d->layoutItems();
         updateGeometry();
+        update();
     }
 }
+
 void ExBreadcrumbBar::paintEvent( QPaintEvent* )
 {
+    Q_D( ExBreadcrumbBar );
+    if ( d->separators.isEmpty() )
+    {
+        return;
+    }
+
     QPainter painter( this );
     painter.setRenderHint( QPainter::Antialiasing );
-    painter.setPen( QPen( palette().color( isEnabled() ? QPalette::Active : QPalette::Disabled, QPalette::WindowText ),
-                         1.2, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin ) );
-    for ( const QRect& separator : m_separators )
+
+    painter.setFont( ExFontIcon::iconFont( 13 ) );
+
+    // WinUI 3 规范：分隔符使用次级文字色（约 65% alpha），清晰自然
+    QColor chevronColor = palette().color( isEnabled() ? QPalette::Active : QPalette::Disabled, QPalette::WindowText );
+    chevronColor.setAlphaF( chevronColor.alphaF() * 0.65 );
+    painter.setPen( chevronColor );
+
+    const QChar chevronChar = isRightToLeft()
+                                  ? ExFontIcon::iconChar( SegoeIcon::ChevronLeft )
+                                  : ExFontIcon::iconChar( SegoeIcon::ChevronRight );
+    const QString glyph( chevronChar );
+
+    for ( const QRect& sepRect : d->separators )
     {
-        const QPointF center = separator.center();
-        const qreal direction = isRightToLeft() ? -1.0 : 1.0;
-        QPainterPath chevron;
-        chevron.moveTo( center + QPointF( -2 * direction, -4 ) );
-        chevron.lineTo( center + QPointF( 2 * direction, 0 ) );
-        chevron.lineTo( center + QPointF( -2 * direction, 4 ) );
-        painter.drawPath( chevron );
+        painter.drawText( sepRect, Qt::AlignCenter, glyph );
     }
 }
 
 bool ExBreadcrumbBar::eventFilter( QObject* watched, QEvent* event )
 {
+    Q_D( ExBreadcrumbBar );
     if ( event->type() == QEvent::KeyPress )
     {
-        auto* key = static_cast<QKeyEvent*>( event );
+        auto* key    = static_cast<QKeyEvent*>( event );
         auto* button = qobject_cast<QToolButton*>( watched );
         if ( button && ( key->key() == Qt::Key_Return || key->key() == Qt::Key_Enter ) )
         {
-            if ( button == m_overflowButton )
+            if ( button == d->overflowButton )
+            {
                 button->showMenu();
+            }
             else
+            {
                 button->click();
+            }
             return true;
         }
         QList<QToolButton*> visible;
-        if ( !m_overflowButton->isHidden() )
-            visible.append( m_overflowButton );
-        for ( auto* item : m_buttons )
+        if ( !d->overflowButton->isHidden() )
+        {
+            visible.append( d->overflowButton );
+        }
+        for ( auto* item : d->buttons )
+        {
             if ( !item->isHidden() )
+            {
                 visible.append( item );
+            }
+        }
         const int index = visible.indexOf( button );
         if ( index >= 0 && key->modifiers() == Qt::NoModifier )
         {
             int next = index;
             switch ( key->key() )
             {
-                case Qt::Key_Home: next = 0; break;
-                case Qt::Key_End: next = visible.size() - 1; break;
-                case Qt::Key_Left: next += isRightToLeft() ? 1 : -1; break;
-                case Qt::Key_Right: next += isRightToLeft() ? -1 : 1; break;
-                default: return QWidget::eventFilter( watched, event );
+                case Qt::Key_Home :
+                    next = 0;
+                    break;
+                case Qt::Key_End :
+                    next = visible.size() - 1;
+                    break;
+                case Qt::Key_Left :
+                    next += isRightToLeft() ? 1 : -1;
+                    break;
+                case Qt::Key_Right :
+                    next += isRightToLeft() ? -1 : 1;
+                    break;
+                default :
+                    return QWidget::eventFilter( watched, event );
             }
             visible.at( qBound( 0, next, int( visible.size() ) - 1 ) )->setFocus( Qt::OtherFocusReason );
             return true;

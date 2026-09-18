@@ -1150,11 +1150,7 @@ static void drawRoundedUnderline( QPainter* painter, const QRectF& shapeRect, co
     painter->drawRoundedRect( shapeRect, radius, radius );
 }
 
-static void drawRoundedBorderSurface( QPainter* painter,
-                                      const QRectF& rect,
-                                      qreal radius,
-                                      const QBrush& background,
-                                      const QBrush& border )
+static void drawRoundedBorderSurface( QPainter* painter, const QRectF& rect, qreal radius, const QBrush& background, const QBrush& border )
 {
     if ( !rect.isValid() )
     {
@@ -2752,9 +2748,7 @@ void FluentUI3Style::drawPrimitive( PrimitiveElement element, const QStyleOption
             {
                 break;
             }
-            const qreal radius = widget && widget->inherits( "QComboBoxPrivateContainer" )
-                                     ? secondLevelRoundingRadius
-                                     : cBRoundingRadius;
+            const qreal radius = widget && widget->inherits( "QComboBoxPrivateContainer" ) ? secondLevelRoundingRadius : cBRoundingRadius;
             drawPopupShadow( painter, panelRect, radius, FlyoutShadowBorderWidth );
             drawRoundedBorderSurface( painter,
                                       panelRect,
@@ -6569,7 +6563,8 @@ void FluentUI3Style::drawControl( ControlElement element, const QStyleOption* op
                     if ( pen != Qt::NoPen || brush != Qt::NoBrush )
                     {
                         // 绘制与菜单定位共用水平内缩。
-                        QRect rect = QRect( mbi->rect ).marginsRemoved( QMargins( MenuBarItemHorizontalInset, 0, MenuBarItemHorizontalInset, 0 ) );
+                        QRect rect =
+                            QRect( mbi->rect ).marginsRemoved( QMargins( MenuBarItemHorizontalInset, 0, MenuBarItemHorizontalInset, 0 ) );
                         qreal radius = secondLevelRoundingRadius;
                         painter->setPen( pen );
                         painter->setBrush( brush );

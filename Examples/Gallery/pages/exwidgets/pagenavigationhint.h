@@ -6,6 +6,7 @@
 #include <QString>
 
 class ExTeachingTip;
+class ExTour;
 class QLabel;
 class QScrollArea;
 
@@ -32,4 +33,6 @@ private:
     QLabel* m_tourStatus = nullptr;
     int m_tourStep = -1;
     QPointer<ExTeachingTip> m_tip;
+    ExTour* m_driverTour = nullptr;
 };
+

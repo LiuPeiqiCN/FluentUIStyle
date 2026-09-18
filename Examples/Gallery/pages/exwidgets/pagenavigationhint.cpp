@@ -2,6 +2,7 @@
 
 #include <exbreadcrumbbar.h>
 #include <exteachingtip.h>
+#include <extour.h>
 #include <QCheckBox>
 #include <QComboBox>
 #include <QFormLayout>
@@ -10,6 +11,7 @@
 #include <QPushButton>
 #include <QScrollArea>
 #include <QSlider>
+#include <QTextEdit>
 #include <QVBoxLayout>
 
 PageNavigationHint::PageNavigationHint( QWidget* parent ) : QFrame( parent )
@@ -167,15 +169,41 @@ PageNavigationHint::PageNavigationHint( QWidget* parent ) : QFrame( parent )
     auto* form = new QFormLayout( tourPanel );
     form->setContentsMargins( 16, 16, 16, 16 );
     form->setSpacing( 16 );
+
+    // 控件 1：普通单行下拉框（中等长方形）
     auto* device = new QComboBox( tourPanel );
-    device->addItems( { tr( "桌面扬声器" ), tr( "耳机" ), tr( "显示器音频" ) } );
+    device->addItems( { tr( "桌面扬声器" ), tr( "无线耳机" ), tr( "显示器内置音频" ) } );
     form->addRow( tr( "输出设备" ), device );
+
+    // 控件 2：小尺寸复选框（紧凑型小方形区域）
+    auto* spatialAudio = new QCheckBox( tr( "开启杜比全景声与空间音频增强" ), tourPanel );
+    spatialAudio->setChecked( true );
+    form->addRow( tr( "空间音效" ), spatialAudio );
+
+    // 控件 3：横向细长条滑块（横向较长、高度较矮）
     auto* volume = new QSlider( Qt::Horizontal, tourPanel );
     volume->setRange( 0, 100 );
     volume->setValue( 60 );
     form->addRow( tr( "输出音量" ), volume );
+
+    // 控件 4：大面积多行文本卡片（高度高、宽度大，展现大范围矩形镂空）
+    auto* noteEdit = new QTextEdit( tourPanel );
+    noteEdit->setFixedHeight( 72 );
+    noteEdit->setPlaceholderText( tr( "在此输入当前设备预设与场景备忘..." ) );
+    noteEdit->setPlainText( tr( "影院模式预设：强化低频动态响应，优化中高频人声对白表现。" ) );
+    form->addRow( tr( "预设备忘" ), noteEdit );
+
+    // 控件 5：固定紧凑尺寸按钮（小巧精致操作按钮，长宽比与之前完全不同）
+    auto* btnRow = new QHBoxLayout;
     auto* apply = new QPushButton( tr( "应用配置" ), tourPanel );
-    form->addRow( QString(), apply );
+    apply->setFixedSize( 110, 32 );
+    auto* reset = new QPushButton( tr( "重置" ), tourPanel );
+    reset->setFixedSize( 70, 32 );
+    btnRow->addWidget( apply );
+    btnRow->addWidget( reset );
+    btnRow->addStretch();
+    form->addRow( QString(), btnRow );
+
     auto* result = new QLabel( tr( "此处为演示配置，不会修改系统设置。" ), tourPanel );
     result->setWordWrap( true );
     form->addRow( result );
@@ -183,17 +211,58 @@ PageNavigationHint::PageNavigationHint( QWidget* parent ) : QFrame( parent )
     {
         result->setText( tr( "已应用演示配置：%1，音量 %2%。" ).arg( device->currentText() ).arg( volume->value() ) );
     } );
+    connect( reset, &QPushButton::clicked, result, [volume, noteEdit, result]()
+    {
+        volume->setValue( 50 );
+        noteEdit->clear();
+        result->setText( tr( "已恢复默认音频参数配置。" ) );
+    } );
     layout->addWidget( tourPanel );
     auto* tourRow = new QHBoxLayout;
-    auto* startTour = new QPushButton( tr( "开始引导 / 重新开始" ), content );
+    auto* startTour = new QPushButton( tr( "普通分步引导 (ExTeachingTip)" ), content );
+    auto* startDriverTour = new QPushButton( tr( "聚光灯漫游向导 (Driver.js 效果)" ), content );
     m_tourStatus = new QLabel( tr( "引导尚未开始" ), content );
     tourRow->addWidget( startTour );
+    tourRow->addWidget( startDriverTour );
     tourRow->addWidget( m_tourStatus, 1 );
     layout->addLayout( tourRow );
 
+    m_driverTour = new ExTour( this );
+    m_driverTour->addStep( device,
+                           tr( "1. 选择音频设备" ),
+                           tr( "普通单行下拉框：聚光灯精准镂空目标，全屏暗色遮罩自动聚焦视线，气泡带有精准指向小尾巴。" ),
+                           ExTourStep::Bottom );
+    m_driverTour->addStep( spatialAudio,
+                           tr( "2. 紧凑复选控件" ),
+                           tr( "小尺寸开关：镂空区域平滑收缩聚焦于复选框，箭头小尾巴自动对齐控件中心。" ),
+                           ExTourStep::Bottom );
+    m_driverTour->addStep( volume,
+                           tr( "3. 细长滑动条" ),
+                           tr( "横向长条滑块：镂空区域迅速横向展开形变，补间动画流畅丝滑。" ),
+                           ExTourStep::Bottom );
+    m_driverTour->addStep( noteEdit,
+                           tr( "4. 大面积文本卡片" ),
+                           tr( "高大多行编辑框：镂空面积纵向延展扩张，卡片与箭头自适应避让并翻转指向。" ),
+                           ExTourStep::Top );
+    m_driverTour->addStep( apply,
+                           tr( "5. 紧凑型独立按钮" ),
+                           tr( "小巧固定尺寸按钮：聚光灯迅速聚焦于保存按钮。点击“完成”即可退出向导。" ),
+                           ExTourStep::Top );
+
+    connect( startDriverTour, &QPushButton::clicked, this, [this]()
+    {
+        if ( m_tourTip )
+            m_tourTip->dismiss();
+        if ( m_tip )
+            m_tip->dismiss();
+        m_driverTour->start();
+    } );
+
     m_tourSteps = {
         { device, tr( "选择输出设备" ), tr( "在这里选择声音播放到哪个设备。你可以打开下拉框试试，然后点击“下一步”。" ) },
+        { spatialAudio, tr( "开启空间音频" ), tr( "小巧的复选框，可启用虚拟环绕与全景声音效增强。" ) },
         { volume, tr( "调整输出音量" ), tr( "拖动滑块调整音量。引导不会锁定界面，你可以边看提示边操作。" ) },
+        { noteEdit, tr( "场景配置备忘" ), tr( "多行大文本框，可在此记录当前设备的专属均衡器描述。" ) },
         { apply, tr( "应用配置" ), tr( "点击“应用配置”保存本次演示选择。点击提示中的“完成”结束引导。" ) }
     };
     m_tourTip = new ExTeachingTip( this );
@@ -268,4 +337,6 @@ void PageNavigationHint::hideEvent( QHideEvent* event )
         m_tip->dismiss();
     if ( m_tourStep >= 0 )
         stopTour();
+    if ( m_driverTour && m_driverTour->isRunning() )
+        m_driverTour->exit();
 }

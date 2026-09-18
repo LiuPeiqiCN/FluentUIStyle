@@ -3,14 +3,14 @@ name: Release
 on:
   push:
     tags:
-      - '[0-9]+.[0-9]+*'
-      - 'v[0-9]+.[0-9]+*'
+      - '[0-9]+*'
+      - 'v[0-9]+*'
   workflow_dispatch:
     inputs:
       tag_name:
-        description: 'Tag name for release (e.g. 4.0)'
+        description: 'Tag name for release (e.g. 4.0 or 4.1)'
         required: false
-        default: '4.0'
+        default: '4.1'
 
 permissions:
   contents: write
@@ -151,12 +151,7 @@ jobs:
           }
 
           # 5. 写入标准 qt.conf，消除 CI 虚拟机硬编码路径漫游与超时
-          $qtConfContent = @"
-[Paths]
-Prefix = .
-Plugins = plugins
-"@
-          Set-Content -Path "$galleryDir/qt.conf" -Value $qtConfContent -Encoding Ascii
+          "[Paths]`r`nPrefix = .`r`nPlugins = plugins" | Set-Content -Path "$galleryDir/qt.conf" -Encoding Ascii
 
           # 6. 运行 windeployqt 自动补全所有 Qt 运行环境
           $galleryExe = "$galleryDir/Gallery.exe"

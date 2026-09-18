@@ -4,29 +4,33 @@
 //=============================================================================
 
 #include "mainwindow.h"
+
+#include "pageaudiolevelmeter.h"
 #include "pageborderbeam.h"
+#include "pagecarousel.h"
 #include "pagechangelog.h"
+#include "pagefeedback.h"
 #include "pageliquidgauge.h"
+#include "pagenavigationhint.h"
 #include "pageprogressring.h"
 #include "pageradialgauge.h"
 #include "pagesystemresources.h"
 #include "pagetimeline.h"
-#include "pageaudiolevelmeter.h"
-#include "pagefeedback.h"
-#include "pagenavigationhint.h"
 
-#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0) && !defined(Q_OS_ANDROID)
-#include "audiomaticplayerwidget.h"
+
+#if QT_VERSION >= QT_VERSION_CHECK( 6, 0, 0 ) && !defined( Q_OS_ANDROID )
+#    include "audiomaticplayerwidget.h"
 #else
-#include "pagespectrum.h"
+#    include "pagespectrum.h"
 #endif
 
 #ifdef GALLERY_ENABLE_I18N
-#include "applanguage.h"
+#    include "applanguage.h"
 #endif
+#include <algorithm>
+
 #include "ui_mainwindow.h"
 
-#include <algorithm>
 
 // Qt Core Headers
 #include <QAction>
@@ -38,12 +42,13 @@
 #include <QEvent>
 #include <QFile>
 #include <QKeySequence>
-#include <QPointer>
 #include <QPainter>
+#include <QPointer>
 #include <QScreen>
 #include <QSvgRenderer>
 #include <QTextStream>
 #include <QTimer>
+
 
 // Qt GUI Headers
 #include <QColor>
@@ -60,6 +65,7 @@
 #include <QAbstractButton>
 #include <QAbstractItemView>
 #include <QAbstractSpinBox>
+#include <QButtonGroup>
 #include <QCheckBox>
 #include <QComboBox>
 #include <QFrame>
@@ -89,74 +95,74 @@
 #include <QStyleOptionComboBox>
 #include <QTabBar>
 #include <QTextEdit>
+#include <QTimer>
 #include <QToolBar>
 #include <QToolButton>
 #include <QTreeWidget>
 #include <QTreeWidgetItem>
 #include <QVBoxLayout>
 #include <QWidget>
-#include <QButtonGroup>
+
 
 // Project Headers
 #include <excombobox.h>
 #include <exexpander.h>
 #include <exinfobarhost.h>
-#include <exstackedwidget.h>
-#include <exnavtreewidget.h>
 #include <exmessagebox.h>
+#include <exnavtreewidget.h>
+#include <exstackedwidget.h>
+#include <extour.h>
 #include <exwinuinavigationview.h>
-#include "font-icon/fonticon.h"
-#include "pagesegoeicongallery.h"
-#include "pageabout.h"
-#include "pageinstalledsoftware.h"
-#include "pagetab.h"
-#include "pagedialog.h"
-#include "pagecolor.h"
-#include "pagerangeslider.h"
+
 #include "fluentui3styleproperties.h"
+#include "pageabout.h"
+#include "pagecolor.h"
+#include "pagedialog.h"
+#include "pageinstalledsoftware.h"
+#include "pagerangeslider.h"
+#include "pagesegoeicongallery.h"
+#include "pagetab.h"
+
+#include "font-icon/fonticon.h"
+
 #ifdef GALLERY_ENABLE_FRAMELESS
-#include <fluenttitlebar.h>
-#include <fluentwindowframe.h>
+#    include <fluenttitlebar.h>
+#    include <fluentwindowframe.h>
 #endif
 #ifdef HAS_FLUENTUI3_STYLE_LIB
-#include "fluentui3style.h"
+#    include "fluentui3style.h"
 #endif
-
 
 //=============================================================================
 // Forward Declarations
 //=============================================================================
 
-void applyStandardMenuIcons(QMenu *menu, QWidget *widget);
+void applyStandardMenuIcons( QMenu* menu, QWidget* widget );
 
 static void refreshFluentStyle()
 {
 #ifdef Q_OS_WIN
-    qApp->setStyle("FluentUI3");
-#elif defined(HAS_FLUENTUI3_STYLE_LIB)
-    qApp->setStyle(new FluentUI3Style);
+    qApp->setStyle( "FluentUI3" );
+#elif defined( HAS_FLUENTUI3_STYLE_LIB )
+    qApp->setStyle( new FluentUI3Style );
 #endif
 }
 
-static void applyAccentColor(const QColor &color)
+static void applyAccentColor( const QColor& color )
 {
-    qApp->setProperty("_q_accent_color", color.isValid() ? QVariant(color) : QVariant());
+    qApp->setProperty( "_q_accent_color", color.isValid() ? QVariant( color ) : QVariant() );
     refreshFluentStyle();
 }
 
 #ifdef Q_OS_WIN
-#include <windows.h>
+#    include <windows.h>
 #endif
-void setTopMost(QWidget* w, bool topMost)
+void setTopMost( QWidget* w, bool topMost )
 {
 #ifdef Q_OS_WIN
-    SetWindowPos(
-        (HWND)w->winId(),
-        topMost ? HWND_TOPMOST : HWND_NOTOPMOST,
-        0, 0, 0, 0,
-        SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+    SetWindowPos( (HWND)w->winId(), topMost ? HWND_TOPMOST : HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE );
 #else
-    w->setWindowFlag(Qt::WindowStaysOnTopHint, topMost);
+    w->setWindowFlag( Qt::WindowStaysOnTopHint, topMost );
     w->show();
 #endif
 }
@@ -166,56 +172,56 @@ namespace {
 QString buildConfigurationName()
 {
 #ifdef NDEBUG
-    return QStringLiteral("Release");
+    return QStringLiteral( "Release" );
 #else
-    return QStringLiteral("Debug");
+    return QStringLiteral( "Debug" );
 #endif
 }
 
 QString targetArchitectureName()
 {
-#if defined(_M_X64) || defined(__x86_64__) || defined(__amd64__)
-    return QStringLiteral("x64");
-#elif defined(_M_IX86) || defined(__i386__)
-    return QStringLiteral("x86");
-#elif defined(_M_ARM64) || defined(__aarch64__)
-    return QStringLiteral("ARM64");
+#if defined( _M_X64 ) || defined( __x86_64__ ) || defined( __amd64__ )
+    return QStringLiteral( "x64" );
+#elif defined( _M_IX86 ) || defined( __i386__ )
+    return QStringLiteral( "x86" );
+#elif defined( _M_ARM64 ) || defined( __aarch64__ )
+    return QStringLiteral( "ARM64" );
 #else
-    return QStringLiteral("UnknownArch");
+    return QStringLiteral( "UnknownArch" );
 #endif
 }
 
-bool widgetBgModeUsesBackdrop(WidgetBgMode mode)
+bool widgetBgModeUsesBackdrop( WidgetBgMode mode )
 {
-    switch (mode)
+    switch ( mode )
     {
-    case WidgetBgMode::DwmBlur:
-        return true;
-    default:
-        return false;
+        case WidgetBgMode::DwmBlur :
+            return true;
+        default :
+            return false;
     }
 }
 
-QString widgetBgModeBackdropKey(WidgetBgMode mode)
+QString widgetBgModeBackdropKey( WidgetBgMode mode )
 {
-    switch (mode)
+    switch ( mode )
     {
-    case WidgetBgMode::DwmBlur:
-        return QStringLiteral("dwm-blur");
-    default:
-        return {};
+        case WidgetBgMode::DwmBlur :
+            return QStringLiteral( "dwm-blur" );
+        default :
+            return {};
     }
 }
 
-} // namespace
+}  // namespace
 
 //=============================================================================
 // Global Variables
 //=============================================================================
 
 // Icon maps for menu and action icons
-static QMap<QAction *, QString> g_actionIconMap;
-static QMap<QMenu *, QString> g_menuIconMap;
+static QMap<QAction*, QString> g_actionIconMap;
+static QMap<QMenu*, QString> g_menuIconMap;
 
 //=============================================================================
 // Helper Classes
@@ -225,58 +231,58 @@ static QMap<QMenu *, QString> g_menuIconMap;
 // MinGW Context Menu Hooks
 //=============================================================================
 
-#if defined (__MINGW32__) || defined(Q_OS_LINUX)
-static void hookContextMenu(QWidget *widget)
+#if defined( __MINGW32__ ) || defined( Q_OS_LINUX )
+static void hookContextMenu( QWidget* widget )
 {
-    if (!widget)
+    if ( !widget )
     {
         return;
     }
 
-    widget->setContextMenuPolicy(Qt::CustomContextMenu);
-    QObject::connect(widget,
-                     &QWidget::customContextMenuRequested,
-                     widget,
-                     [widget](const QPoint &pos)
-                     {
-                         QMenu *menu = nullptr;
+    widget->setContextMenuPolicy( Qt::CustomContextMenu );
+    QObject::connect( widget,
+                      &QWidget::customContextMenuRequested,
+                      widget,
+                      [ widget ]( const QPoint& pos )
+                      {
+                          QMenu* menu = nullptr;
 
-                         if (QLineEdit *edit = qobject_cast<QLineEdit *>(widget))
-                         {
-                             menu = edit->createStandardContextMenu();
-                         }
-                         else if (QTextEdit *textEdit = qobject_cast<QTextEdit *>(widget))
-                         {
-                             menu = textEdit->createStandardContextMenu();
-                         }
-                         else if (QPlainTextEdit *plainEdit = qobject_cast<QPlainTextEdit *>(widget))
-                         {
-                             menu = plainEdit->createStandardContextMenu();
-                         }
-                         else if (QComboBox *comboBox = qobject_cast<QComboBox *>(widget))
-                         {
-                             if (comboBox->isEditable() && comboBox->lineEdit())
-                             {
-                                 menu = comboBox->lineEdit()->createStandardContextMenu();
-                             }
-                         }
-                         else if (QAbstractSpinBox *spinBox = qobject_cast<QAbstractSpinBox *>(widget))
-                         {
-                             if (QLineEdit *edit = spinBox->findChild<QLineEdit *>())
-                             {
-                                 menu = edit->createStandardContextMenu();
-                             }
-                         }
+                          if ( QLineEdit* edit = qobject_cast<QLineEdit*>( widget ) )
+                          {
+                              menu = edit->createStandardContextMenu();
+                          }
+                          else if ( QTextEdit* textEdit = qobject_cast<QTextEdit*>( widget ) )
+                          {
+                              menu = textEdit->createStandardContextMenu();
+                          }
+                          else if ( QPlainTextEdit* plainEdit = qobject_cast<QPlainTextEdit*>( widget ) )
+                          {
+                              menu = plainEdit->createStandardContextMenu();
+                          }
+                          else if ( QComboBox* comboBox = qobject_cast<QComboBox*>( widget ) )
+                          {
+                              if ( comboBox->isEditable() && comboBox->lineEdit() )
+                              {
+                                  menu = comboBox->lineEdit()->createStandardContextMenu();
+                              }
+                          }
+                          else if ( QAbstractSpinBox* spinBox = qobject_cast<QAbstractSpinBox*>( widget ) )
+                          {
+                              if ( QLineEdit* edit = spinBox->findChild<QLineEdit*>() )
+                              {
+                                  menu = edit->createStandardContextMenu();
+                              }
+                          }
 
-                         if (!menu)
-                         {
-                             return;
-                         }
+                          if ( !menu )
+                          {
+                              return;
+                          }
 
-                         applyStandardMenuIcons(menu, widget);
-                         menu->exec(widget->mapToGlobal(pos));
-                         delete menu;
-                     });
+                          applyStandardMenuIcons( menu, widget );
+                          menu->exec( widget->mapToGlobal( pos ) );
+                          delete menu;
+                      } );
 }
 #endif
 
@@ -284,86 +290,89 @@ static void hookContextMenu(QWidget *widget)
 // Fluent Icon Creation
 //=============================================================================
 
-QIcon createFluentIcon(const QString &unicode, QColor color = QColor())
+QIcon createFluentIcon( const QString& unicode, QColor color = QColor() )
 {
-    const int pixelSize = 25;
+    const int pixelSize          = 25;
     const qreal devicePixelRatio = 1.0;
-    QFont iconFont("Segoe Fluent Icons");
-    iconFont.setPixelSize(pixelSize * devicePixelRatio);
+    QFont iconFont( "Segoe Fluent Icons" );
+    iconFont.setPixelSize( pixelSize * devicePixelRatio );
 
     // Determine if we're using dark theme
     bool isDarkTheme = false;
-    isDarkTheme = qApp->property("_q_colorscheme").toInt() == 1;
+    isDarkTheme      = qApp->property( "_q_colorscheme" ).toInt() == 1;
 
     // Create pixmap
-    QPixmap pixmap(30 * devicePixelRatio, 30 * devicePixelRatio);
-    pixmap.setDevicePixelRatio(devicePixelRatio);
-    pixmap.fill(Qt::transparent);
+    QPixmap pixmap( 30 * devicePixelRatio, 30 * devicePixelRatio );
+    pixmap.setDevicePixelRatio( devicePixelRatio );
+    pixmap.fill( Qt::transparent );
 
     // Draw icon
-    QPainter painter(&pixmap);
-    painter.setRenderHints(QPainter::Antialiasing | QPainter::TextAntialiasing | QPainter::SmoothPixmapTransform);
-    painter.setFont(iconFont);
-    painter.setPen(color.isValid() ? color : (isDarkTheme ? Qt::white : Qt::black));
-    painter.drawText(pixmap.rect(), Qt::AlignCenter, unicode);
+    QPainter painter( &pixmap );
+    painter.setRenderHints( QPainter::Antialiasing | QPainter::TextAntialiasing | QPainter::SmoothPixmapTransform );
+    painter.setFont( iconFont );
+    painter.setPen( color.isValid() ? color : ( isDarkTheme ? Qt::white : Qt::black ) );
+    painter.drawText( pixmap.rect(), Qt::AlignCenter, unicode );
 
-    return QIcon(pixmap);
+    return QIcon( pixmap );
 }
 
 //=============================================================================
 // MainWindow Constructor & Destructor
 //=============================================================================
 
-void changeAccentPalette(QWidget* w, QColor c)
+void changeAccentPalette( QWidget* w, QColor c )
 {
-#if QT_VERSION >= QT_VERSION_CHECK(6, 6, 0)
+#if QT_VERSION >= QT_VERSION_CHECK( 6, 6, 0 )
     auto p = w->palette();
-    p.setColor(QPalette::Accent, c);
-    w->setPalette(p);
+    p.setColor( QPalette::Accent, c );
+    w->setPalette( p );
 #endif
 }
 
-MainWindow::MainWindow(QWidget *parent)
-    : QMainWindow(parent),
-    ui(new Ui::MainWindow),
-    m_menuBar(nullptr),
-    m_toolBar(nullptr),
+MainWindow::MainWindow( QWidget* parent )
+    : QMainWindow( parent )
+    , ui( new Ui::MainWindow )
+    , m_menuBar( nullptr )
+    , m_toolBar( nullptr )
+    ,
 #ifdef GALLERY_ENABLE_FRAMELESS
-    m_windowFrame(nullptr),
+    m_windowFrame( nullptr )
+    ,
 #endif
-    m_tabShowcaseWidget(nullptr),
-    m_searchAction(nullptr),
-    m_tabBarWidgetBg(nullptr),
-    m_widgetBgMode(WidgetBgMode::None)
+    m_tabShowcaseWidget( nullptr )
+    , m_searchAction( nullptr )
+    , m_tabBarWidgetBg( nullptr )
+    , m_widgetBgMode( WidgetBgMode::None )
+    , m_galleryTour( nullptr )
 {
-    setObjectName(QStringLiteral("MainWindow"));
+    setObjectName( QStringLiteral( "MainWindow" ) );
 #ifdef GALLERY_ENABLE_FRAMELESS
-    setAttribute(Qt::WA_DontCreateNativeAncestors);
+    setAttribute( Qt::WA_DontCreateNativeAncestors );
 #endif
 
-    ui->setupUi(this);
+    ui->setupUi( this );
 
     ExInfoBarHost::setDefaultTarget( this );
 
     setupSettingsPage();
 
-    m_menuBar = new QMenuBar(this);
-    m_menuBar->setObjectName(QStringLiteral("win-menu-bar"));
+    m_menuBar = new QMenuBar( this );
+    m_menuBar->setObjectName( QStringLiteral( "win-menu-bar" ) );
 
 #ifdef GALLERY_ENABLE_FRAMELESS
-    m_windowFrame = new FluentWindowFrame(this, this);
-    m_windowFrame->installChromeHeader(m_menuBar);
+    m_windowFrame = new FluentWindowFrame( this, this );
+    m_windowFrame->installChromeHeader( m_menuBar );
     setupTitleBarChrome();
-#elif defined(Q_OS_ANDROID)
+#elif defined( Q_OS_ANDROID )
     m_menuBar->hide();
 #else
-    setMenuBar(m_menuBar);
+    setMenuBar( m_menuBar );
 #endif
 
-    setWindowIcon(QIcon(":/appicon.ico"));
+    setWindowIcon( QIcon( ":/appicon.ico" ) );
 
-    setWindowTitle(tr("FluentUI Gallery - QStyle [%1 | %2 | Qt %3]")
-                       .arg(buildConfigurationName(), targetArchitectureName(), QT_VERSION_STR));
+    setWindowTitle(
+        tr( "FluentUI Gallery - QStyle [%1 | %2 | Qt %3]" ).arg( buildConfigurationName(), targetArchitectureName(), QT_VERSION_STR ) );
 
     // Initialize widgets with fluent border style
     initializeFluentBorderWidgets();
@@ -383,52 +392,49 @@ MainWindow::MainWindow(QWidget *parent)
 #ifdef GALLERY_ENABLE_I18N
     syncLanguageRadios();
 #else
-    if ( QWidget* languageCard = ui->pageSetting->findChild<QWidget*>(
-             QStringLiteral( "settingsLanguageCard" ) ) )
+    if ( QWidget* languageCard = ui->pageSetting->findChild<QWidget*>( QStringLiteral( "settingsLanguageCard" ) ) )
     {
         languageCard->hide();
     }
 #endif
 
-#if defined (__MINGW32__) || defined(Q_OS_LINUX)
+#if defined( __MINGW32__ ) || defined( Q_OS_LINUX )
     // Hook context menus for MinGW
-    for (QWidget *widget : findChildren<QWidget *>())
+    for ( QWidget* widget : findChildren<QWidget*>() )
     {
-        hookContextMenu(widget);
+        hookContextMenu( widget );
     }
 #endif
 }
 
 MainWindow::~MainWindow()
-{
-    delete ui;
-}
+{ delete ui; }
 
 //=============================================================================
 // Event Handlers
 //=============================================================================
 
-void MainWindow::paintEvent(QPaintEvent *event)
+void MainWindow::paintEvent( QPaintEvent* event )
 {
-    if (m_widgetBgMode == WidgetBgMode::None)
+    if ( m_widgetBgMode == WidgetBgMode::None )
     {
-        QMainWindow::paintEvent(event);
+        QMainWindow::paintEvent( event );
         return;
     }
 
-    if (widgetBgModeUsesBackdrop(m_widgetBgMode))
-    {
-        return;
-    }
-
-    if (m_bgLight.isNull() || m_bgDark.isNull())
+    if ( widgetBgModeUsesBackdrop( m_widgetBgMode ) )
     {
         return;
     }
 
-    QPainter painter(this);
-    const bool isDark = qApp->property("_q_colorscheme").toInt() == 1;
-    painter.drawPixmap(rect(), isDark ? m_bgDark : m_bgLight);
+    if ( m_bgLight.isNull() || m_bgDark.isNull() )
+    {
+        return;
+    }
+
+    QPainter painter( this );
+    const bool isDark = qApp->property( "_q_colorscheme" ).toInt() == 1;
+    painter.drawPixmap( rect(), isDark ? m_bgDark : m_bgLight );
 }
 
 //=============================================================================
@@ -437,14 +443,14 @@ void MainWindow::paintEvent(QPaintEvent *event)
 
 void MainWindow::initializeFluentBorderWidgets()
 {
-    QList<QWidget *> fluentWidgets;
+    QList<QWidget*> fluentWidgets;
     fluentWidgets << ui->widget << ui->widget_2 << ui->widget_3 << ui->widget_4 << ui->widget_5 << ui->widget_6 << ui->widget_7
                   << ui->widget_8 << ui->widget_9 << ui->widget_10 << ui->widget_12 << ui->widget_13 << ui->widget_14;
 
-    for (QWidget *widget : std::as_const(fluentWidgets))
+    for ( QWidget* widget : std::as_const( fluentWidgets ) )
     {
-        widget->setAttribute(Qt::WA_StyledBackground);
-        widget->setProperty("isCard", true);
+        widget->setAttribute( Qt::WA_StyledBackground );
+        widget->setProperty( "isCard", true );
     }
 }
 
@@ -459,17 +465,15 @@ void MainWindow::setupSettingsPage()
     };
 
     const SettingsSection sections[] = {
-        { ui->label_20, ui->widgetColorSheme, nullptr,
-          { ui->rBLightTheme, ui->rBDarkTheme } },
-        { ui->labelUiLanguage, ui->widgetUiLanguage, nullptr,
-          { ui->rBLangZh_CN, ui->rBLangEn_US, ui->rBLangSystem } },
-        { ui->label_21, ui->widgetWidgetMode, ui->verticalLayout_2,
-          { ui->rBWidgtModeNormal, ui->rBWidgetModePixmap, ui->rBWidgetModeDwmBlur } },
-        { ui->label_22, ui->widgetNavMode, ui->verticalLayout_3,
-          { ui->rBOnlyIcon, ui->rBIconAndText } },
+        { ui->label_20,        ui->widgetColorSheme,  nullptr,              { ui->rBLightTheme, ui->rBDarkTheme }                  },
+        { ui->labelUiLanguage, ui->widgetUiLanguage,  nullptr,              { ui->rBLangZh_CN, ui->rBLangEn_US, ui->rBLangSystem } },
+        { ui->label_21,
+         ui->widgetWidgetMode,
+         ui->verticalLayout_2,
+         { ui->rBWidgtModeNormal, ui->rBWidgetModePixmap, ui->rBWidgetModeDwmBlur }                                                },
+        { ui->label_22,        ui->widgetNavMode,     ui->verticalLayout_3, { ui->rBOnlyIcon, ui->rBIconAndText }                  },
         // 强调色内部是动态创建的按钮网格，仍作为一个完整 Content。
-        { ui->label_19, ui->widgetAccentColor, ui->verticalLayout,
-          {} }
+        { ui->label_19,        ui->widgetAccentColor, ui->verticalLayout,   {}                                                     }
     };
 
     // 从 Designer 布局中取出原有控件。RadioButton 继续作为设置状态和
@@ -510,9 +514,7 @@ void MainWindow::setupSettingsPage()
     ui->scrollArea->setHorizontalScrollBarPolicy( Qt::ScrollBarAlwaysOff );
     ui->scrollAreaWidgetContents->setAutoFillBackground( false );
 
-    auto makeTextBlock = [this]( const QString& title,
-                                 const QString& description,
-                                 QWidget* parent ) -> QWidget*
+    auto makeTextBlock = [ this ]( const QString& title, const QString& description, QWidget* parent ) -> QWidget*
     {
         auto* textWidget = new QWidget( parent );
         textWidget->setSizePolicy( QSizePolicy::Expanding, QSizePolicy::Preferred );
@@ -532,8 +534,7 @@ void MainWindow::setupSettingsPage()
             auto* descriptionLabel = new QLabel( description, textWidget );
             descriptionLabel->setObjectName( QStringLiteral( "settingsCardDescription" ) );
             QPalette descriptionPalette = descriptionLabel->palette();
-            descriptionPalette.setColor( QPalette::WindowText,
-                                         descriptionPalette.color( QPalette::Mid ) );
+            descriptionPalette.setColor( QPalette::WindowText, descriptionPalette.color( QPalette::Mid ) );
             descriptionLabel->setPalette( descriptionPalette );
             descriptionLabel->setWordWrap( true );
             textLayout->addWidget( descriptionLabel );
@@ -544,7 +545,7 @@ void MainWindow::setupSettingsPage()
     auto makeIconLabel = []( int icon, QWidget* parent ) -> QLabel*
     {
         auto* iconLabel = new QLabel( parent );
-        QFont iconFont( QString::fromLatin1( SegoeFontName ) );
+        QFont iconFont( QString::fromLatin1( SegoeIcon::SegoeFontName ) );
         iconFont.setPixelSize( 22 );
         iconLabel->setFont( iconFont );
         iconLabel->setText( QString( QChar( static_cast<ushort>( icon ) ) ) );
@@ -554,14 +555,11 @@ void MainWindow::setupSettingsPage()
         return iconLabel;
     };
 
-    auto makeCardContents = [&]( int icon,
-                                 const QString& title,
-                                 const QString& description,
-                                 QWidget* trailing,
-                                 QWidget* parent ) -> QWidget*
+    auto makeCardContents = [ & ](
+                                int icon, const QString& title, const QString& description, QWidget* trailing, QWidget* parent ) -> QWidget*
     {
         auto* contents = new QWidget( parent );
-        auto* layout = new QHBoxLayout( contents );
+        auto* layout   = new QHBoxLayout( contents );
         layout->setContentsMargins( 18, 12, 18, 12 );
         layout->setSpacing( 14 );
         layout->addWidget( makeIconLabel( icon, contents ) );
@@ -574,14 +572,10 @@ void MainWindow::setupSettingsPage()
         return contents;
     };
 
-    auto makeCard = [&]( const QString& objectName,
-                         int icon,
-                         const QString& title,
-                         const QString& description,
-                         QWidget* trailing ) -> QWidget*
+    auto makeCard =
+        [ & ]( const QString& objectName, int icon, const QString& title, const QString& description, QWidget* trailing ) -> QWidget*
     {
-        auto* card = makeCardContents( icon, title, description, trailing,
-                                       ui->scrollAreaWidgetContents );
+        auto* card = makeCardContents( icon, title, description, trailing, ui->scrollAreaWidgetContents );
         card->setObjectName( objectName );
         card->setAttribute( Qt::WA_StyledBackground );
         card->setProperty( "isCard", true );
@@ -590,8 +584,7 @@ void MainWindow::setupSettingsPage()
         return card;
     };
 
-    auto makeCombo = [this]( const QString& objectName,
-                             const QStringList& items ) -> ExComboBox*
+    auto makeCombo = [ this ]( const QString& objectName, const QStringList& items ) -> ExComboBox*
     {
         auto* combo = new ExComboBox( ui->scrollAreaWidgetContents );
         combo->setObjectName( objectName );
@@ -602,8 +595,7 @@ void MainWindow::setupSettingsPage()
         return combo;
     };
 
-    auto bindComboToButtons = [this]( QComboBox* combo,
-                                      const QList<QAbstractButton*>& buttons )
+    auto bindComboToButtons = [ this ]( QComboBox* combo, const QList<QAbstractButton*>& buttons )
     {
         int initialIndex = 0;
         for ( int index = 0; index < buttons.size(); ++index )
@@ -613,8 +605,10 @@ void MainWindow::setupSettingsPage()
             {
                 initialIndex = index;
             }
-            connect( button, &QAbstractButton::toggled, combo,
-                     [combo, index]( bool checked )
+            connect( button,
+                     &QAbstractButton::toggled,
+                     combo,
+                     [ combo, index ]( bool checked )
                      {
                          if ( checked && combo->currentIndex() != index )
                          {
@@ -624,80 +618,82 @@ void MainWindow::setupSettingsPage()
                      } );
         }
         combo->setCurrentIndex( initialIndex );
-        connect( combo, QOverload<int>::of( &QComboBox::currentIndexChanged ), this,
-                 [buttons]( int index )
+        connect( combo,
+                 QOverload<int>::of( &QComboBox::currentIndexChanged ),
+                 this,
+                 [ buttons ]( int index )
                  {
-                     if ( index >= 0 && index < buttons.size()
-                          && !buttons.at( index )->isChecked() )
+                     if ( index >= 0 && index < buttons.size() && !buttons.at( index )->isChecked() )
                      {
                          buttons.at( index )->click();
                      }
                  } );
     };
 
-    auto* pageTitle = new QLabel( tr( "设置" ), ui->scrollAreaWidgetContents );
+    auto* pageTitle     = new QLabel( tr( "设置" ), ui->scrollAreaWidgetContents );
     QFont pageTitleFont = pageTitle->font();
     pageTitleFont.setPixelSize( 28 );
     pageTitleFont.setBold( true );
     pageTitle->setFont( pageTitleFont );
 
-    auto makeSectionTitle = [this]( const QString& text ) -> QLabel*
+    auto makeSectionTitle = [ this ]( const QString& text ) -> QLabel*
     {
         auto* label = new QLabel( text, ui->scrollAreaWidgetContents );
-        QFont font = label->font();
+        QFont font  = label->font();
         font.setPixelSize( 14 );
         font.setBold( true );
         label->setFont( font );
         return label;
     };
 
-    auto* themeCombo = makeCombo( QStringLiteral( "settingsThemeCombo" ),
-                                  { tr( "浅色" ), tr( "暗色" ) } );
+    auto* themeCombo = makeCombo( QStringLiteral( "settingsThemeCombo" ), { tr( "浅色" ), tr( "暗色" ) } );
     bindComboToButtons( themeCombo, { ui->rBLightTheme, ui->rBDarkTheme } );
 
-    auto* languageCombo = makeCombo( QStringLiteral( "settingsLanguageCombo" ),
-                                     { tr( "简体中文" ), QStringLiteral( "English" ),
-                                       tr( "跟随系统" ) } );
-    bindComboToButtons( languageCombo,
-                        { ui->rBLangZh_CN, ui->rBLangEn_US, ui->rBLangSystem } );
+    auto* languageCombo =
+        makeCombo( QStringLiteral( "settingsLanguageCombo" ), { tr( "简体中文" ), QStringLiteral( "English" ), tr( "跟随系统" ) } );
+    bindComboToButtons( languageCombo, { ui->rBLangZh_CN, ui->rBLangEn_US, ui->rBLangSystem } );
 
-    auto* backgroundCombo = makeCombo( QStringLiteral( "settingsBackgroundCombo" ),
-                                       { tr( "正常" ), tr( "图片" ),
-                                         QStringLiteral( "DWM blur" ) } );
-    bindComboToButtons( backgroundCombo,
-                        { ui->rBWidgtModeNormal, ui->rBWidgetModePixmap,
-                          ui->rBWidgetModeDwmBlur } );
+    auto* backgroundCombo =
+        makeCombo( QStringLiteral( "settingsBackgroundCombo" ), { tr( "正常" ), tr( "图片" ), QStringLiteral( "DWM blur" ) } );
+    bindComboToButtons( backgroundCombo, { ui->rBWidgtModeNormal, ui->rBWidgetModePixmap, ui->rBWidgetModeDwmBlur } );
 
-    auto* navigationCombo = makeCombo( QStringLiteral( "settingsNavigationCombo" ),
-                                       { tr( "仅图标" ), tr( "图标和文本" ) } );
+    auto* navigationCombo = makeCombo( QStringLiteral( "settingsNavigationCombo" ), { tr( "仅图标" ), tr( "图标和文本" ) } );
     bindComboToButtons( navigationCombo, { ui->rBOnlyIcon, ui->rBIconAndText } );
 
     auto* appearanceTitle = makeSectionTitle( tr( "外观和行为" ) );
-    auto* themeCard = makeCard( QStringLiteral( "settingsThemeCard" ), static_cast<int>( SegoeIcon::Color ),
-                                tr( "应用主题" ), tr( "选择应用显示的主题" ), themeCombo );
-    auto* languageCard = makeCard( QStringLiteral( "settingsLanguageCard" ), static_cast<int>( SegoeIcon::Globe ),
-                                   tr( "界面语言" ), tr( "选择应用使用的显示语言" ),
-                                   languageCombo );
-    auto* backgroundCard = makeCard( QStringLiteral( "settingsBackgroundCard" ), static_cast<int>( SegoeIcon::Picture ),
-                                     tr( "窗口背景" ), tr( "选择内容区域的背景效果" ),
-                                     backgroundCombo );
-    auto* navigationCard = makeCard( QStringLiteral( "settingsNavigationCard" ), static_cast<int>( SegoeIcon::TaskView ),
-                                     tr( "导航样式" ), tr( "选择导航栏的显示方式" ),
-                                     navigationCombo );
+    auto* themeCard       = makeCard( QStringLiteral( "settingsThemeCard" ),
+                                      static_cast<int>( SegoeIcon::Color ),
+                                      tr( "应用主题" ),
+                                      tr( "选择应用显示的主题" ),
+                                      themeCombo );
+    auto* languageCard    = makeCard( QStringLiteral( "settingsLanguageCard" ),
+                                      static_cast<int>( SegoeIcon::Globe ),
+                                      tr( "界面语言" ),
+                                      tr( "选择应用使用的显示语言" ),
+                                      languageCombo );
+    auto* backgroundCard  = makeCard( QStringLiteral( "settingsBackgroundCard" ),
+                                      static_cast<int>( SegoeIcon::Picture ),
+                                      tr( "窗口背景" ),
+                                      tr( "选择内容区域的背景效果" ),
+                                      backgroundCombo );
+    auto* navigationCard  = makeCard( QStringLiteral( "settingsNavigationCard" ),
+                                      static_cast<int>( SegoeIcon::TaskView ),
+                                      tr( "导航样式" ),
+                                      tr( "选择导航栏的显示方式" ),
+                                      navigationCombo );
 
     auto* accentExpander = new ExExpander( ui->scrollAreaWidgetContents );
     accentExpander->setObjectName( QStringLiteral( "settingsAccentExpander" ) );
-    auto* accentHeader = makeCardContents( static_cast<int>( SegoeIcon::SettingsDisplaySound ), tr( "强调色" ),
-                                           tr( "选择控件使用的系统强调色" ),
-                                           nullptr, accentExpander );
+    auto* accentHeader = makeCardContents(
+        static_cast<int>( SegoeIcon::SettingsDisplaySound ), tr( "强调色" ), tr( "选择控件使用的系统强调色" ), nullptr, accentExpander );
     accentHeader->layout()->setContentsMargins( 0, 12, 0, 12 );
     accentExpander->setHeaderWidget( accentHeader );
     accentExpander->addContentWidget( ui->widgetAccentColor );
     accentExpander->setExpanded( false );
 
-    auto* aboutTitle = makeSectionTitle( tr( "关于" ) );
+    auto* aboutTitle  = makeSectionTitle( tr( "关于" ) );
     auto* aboutButton = new QToolButton( ui->scrollAreaWidgetContents );
-    QFont chevronFont( QString::fromLatin1( SegoeFontName ) );
+    QFont chevronFont( QString::fromLatin1( SegoeIcon::SegoeFontName ) );
     chevronFont.setPixelSize( 16 );
     aboutButton->setFont( chevronFont );
     aboutButton->setText( QString( QChar( static_cast<ushort>( SegoeIcon::ChevronRight ) ) ) );
@@ -705,29 +701,32 @@ void MainWindow::setupSettingsPage()
     aboutButton->setAutoRaise( true );
     aboutButton->setFixedSize( 36, 36 );
 
-    auto* versionLabel = new QLabel( QStringLiteral( "v0.1" ), ui->scrollAreaWidgetContents );
+    auto* versionLabel      = new QLabel( QStringLiteral( "v0.1" ), ui->scrollAreaWidgetContents );
     QPalette versionPalette = versionLabel->palette();
     versionPalette.setColor( QPalette::WindowText, versionPalette.color( QPalette::Mid ) );
     versionLabel->setPalette( versionPalette );
 
-    auto* aboutTrailing = new QWidget( ui->scrollAreaWidgetContents );
+    auto* aboutTrailing       = new QWidget( ui->scrollAreaWidgetContents );
     auto* aboutTrailingLayout = new QHBoxLayout( aboutTrailing );
     aboutTrailingLayout->setContentsMargins( 0, 0, 0, 0 );
     aboutTrailingLayout->setSpacing( 8 );
     aboutTrailingLayout->addWidget( versionLabel );
     aboutTrailingLayout->addWidget( aboutButton );
 
-    auto* aboutCard = makeCard( QStringLiteral( "settingsAboutCard" ), static_cast<int>( SegoeIcon::AppIconDefault ),
+    auto* aboutCard = makeCard( QStringLiteral( "settingsAboutCard" ),
+                                static_cast<int>( SegoeIcon::AppIconDefault ),
                                 QStringLiteral( "FluentUI3 Gallery" ),
-                                tr( "FluentUI3 Style 与扩展控件示例程序" ), aboutTrailing );
-    if ( auto* aboutIcon = aboutCard->findChild<QLabel*>(
-             QStringLiteral( "settingsCardIcon" ) ) )
+                                tr( "FluentUI3 Style 与扩展控件示例程序" ),
+                                aboutTrailing );
+    if ( auto* aboutIcon = aboutCard->findChild<QLabel*>( QStringLiteral( "settingsCardIcon" ) ) )
     {
         aboutIcon->setText( QString() );
         aboutIcon->setPixmap( QIcon( QStringLiteral( ":/appicon.ico" ) ).pixmap( 24, 24 ) );
     }
-    connect( aboutButton, &QToolButton::clicked, this,
-             [this]
+    connect( aboutButton,
+             &QToolButton::clicked,
+             this,
+             [ this ]
              {
                  if ( m_winUINavigationView )
                  {
@@ -757,20 +756,20 @@ void MainWindow::setupSettingsPage()
 void MainWindow::initializeComponents()
 {
     // Load background images
-    m_bgLight = QPixmap(":/images/bg3.png");
-    m_bgDark = QPixmap(":/images/bg2.png");
+    m_bgLight = QPixmap( ":/images/bg3.png" );
+    m_bgDark  = QPixmap( ":/images/bg2.png" );
 
-    ui->dial_3->setProperty("dialDrawValue", false);
+    ui->dial_3->setProperty( "dialDrawValue", false );
 
     // Configure scroll areas
-    ui->scrollArea_2->viewport()->setAutoFillBackground(false);
-    ui->scrollAreaWidgetContents->setAutoFillBackground(false);
-    ui->scrollAreaWidgetContents_4->setAutoFillBackground(false);
+    ui->scrollArea_2->viewport()->setAutoFillBackground( false );
+    ui->scrollAreaWidgetContents->setAutoFillBackground( false );
+    ui->scrollAreaWidgetContents_4->setAutoFillBackground( false );
 
     // Configure search line edit
-    ui->lineEditSerach->setPlaceholderText(tr("搜索..."));
-    ui->lineEditSerach->setClearButtonEnabled(true);
-    m_searchAction = ui->lineEditSerach->addAction(createFluentIcon("\ue721"), QLineEdit::TrailingPosition);
+    ui->lineEditSerach->setPlaceholderText( tr( "搜索..." ) );
+    ui->lineEditSerach->setClearButtonEnabled( true );
+    m_searchAction = ui->lineEditSerach->addAction( createFluentIcon( "\ue721" ), QLineEdit::TrailingPosition );
 
     setupSegoeIconGalleryPage();
     setupAboutPage();
@@ -783,40 +782,40 @@ void MainWindow::initializeComponents()
     setupSystemResourcesPage();
 
     // Configure stacked widget
-    ui->stackedWidget->setVerticalMode(true);
-    ui->stackedWidget->setAnimation(QEasingCurve::Type::InOutSine);
-    ui->stackedWidget->setSpeed(300);
+    ui->stackedWidget->setVerticalMode( true );
+    ui->stackedWidget->setAnimation( QEasingCurve::Type::InOutSine );
+    ui->stackedWidget->setSpeed( 300 );
 
     // Initialize sub-components
     rebuildMenuAndToolBar();
     initializeNavigationView();
-    m_installedSoftwareTable = new PageInstalledSoftware(ui->tableWidget, this);
+    m_installedSoftwareTable = new PageInstalledSoftware( ui->tableWidget, this );
     m_installedSoftwareTable->initialize();
 
     // Configure background properties
-    ui->centralwidget->setAttribute(Qt::WA_TranslucentBackground, true);
-    ui->centralwidget->setAttribute(Qt::WA_StyledBackground, true);
-    m_menuBar->setAttribute(Qt::WA_TranslucentBackground, true);
-    m_menuBar->setAttribute(Qt::WA_StyledBackground, false);
-    m_menuBar->setAutoFillBackground(false);
-    m_toolBar->setAttribute(Qt::WA_TranslucentBackground, true);
-    m_toolBar->setAttribute(Qt::WA_StyledBackground, false);
-    m_toolBar->setAutoFillBackground(false);
+    ui->centralwidget->setAttribute( Qt::WA_TranslucentBackground, true );
+    ui->centralwidget->setAttribute( Qt::WA_StyledBackground, true );
+    m_menuBar->setAttribute( Qt::WA_TranslucentBackground, true );
+    m_menuBar->setAttribute( Qt::WA_StyledBackground, false );
+    m_menuBar->setAutoFillBackground( false );
+    m_toolBar->setAttribute( Qt::WA_TranslucentBackground, true );
+    m_toolBar->setAttribute( Qt::WA_StyledBackground, false );
+    m_toolBar->setAutoFillBackground( false );
 
     // Configure control properties
-    ui->progressBar->setProperty(ProgressBarStyleProperty, ProgressBarThick);
-    ui->spinBox->setProperty("spinBoxButtonLayout", ArrowsHorizontalRight);
-    ui->checkBox_5->setText(tr("Off"));
-    ui->treeWidget->setProperty("ItemHeight", 32);
-    ui->treeWidget->setIndentation(20);
+    ui->progressBar->setProperty( ProgressBarStyleProperty, ProgressBarThick );
+    ui->spinBox->setProperty( "spinBoxButtonLayout", ArrowsHorizontalRight );
+    ui->checkBox_5->setText( tr( "Off" ) );
+    ui->treeWidget->setProperty( "ItemHeight", 32 );
+    ui->treeWidget->setIndentation( 20 );
 
     // 修改部分控件的Accent色
-    changeAccentPalette(ui->checkBox_2, QColor("#4CAF50"));
-    changeAccentPalette(ui->checkBox_3, QColor("#FFC107"));
-    changeAccentPalette(ui->checkBox_4, "#FF8F00");
+    changeAccentPalette( ui->checkBox_2, QColor( "#4CAF50" ) );
+    changeAccentPalette( ui->checkBox_3, QColor( "#FFC107" ) );
+    changeAccentPalette( ui->checkBox_4, "#FF8F00" );
 
-    changeAccentPalette(ui->radioButton, QColor("#FFC107"));
-    changeAccentPalette(ui->radioButton_2, "#FF8F00");
+    changeAccentPalette( ui->radioButton, QColor( "#FFC107" ) );
+    changeAccentPalette( ui->radioButton_2, "#FF8F00" );
 
     // Setup tabs
     setupTabs();
@@ -831,23 +830,27 @@ void MainWindow::initializeComponents()
     setupMdiArea();
 
     // Set initial page
-    ui->stackedWidget->setCurrentIndex(0);
+    ui->stackedWidget->setCurrentIndex( 0 );
+
+    // Setup tour guide & schedule initial startup guide
+    setupGalleryTour();
+    QTimer::singleShot( 800, this, [ this ]() { startGalleryTour(); } );
 }
 
 void MainWindow::setupComboBox()
 {
-    ui->comboBox->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Fixed);
-    ui->comboBox->setSizeAdjustPolicy(QComboBox::AdjustToContents);
+    ui->comboBox->setSizePolicy( QSizePolicy::Minimum, QSizePolicy::Fixed );
+    ui->comboBox->setSizeAdjustPolicy( QComboBox::AdjustToContents );
 
     QStyleOptionComboBox option;
     option.editable = false;
-    if (style()->styleHint(QStyle::SH_ComboBox_Popup, &option, ui->comboBox) > 0)
+    if ( style()->styleHint( QStyle::SH_ComboBox_Popup, &option, ui->comboBox ) > 0 )
     {
-        ui->comboBox->setView(new QListView());
+        ui->comboBox->setView( new QListView() );
     }
 
-#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
-    ui->comboBox->setView(new QListView());
+#if QT_VERSION < QT_VERSION_CHECK( 6, 0, 0 )
+    ui->comboBox->setView( new QListView() );
 #endif
 }
 
@@ -857,196 +860,207 @@ void MainWindow::setupComboBox()
 
 void MainWindow::buildMainMenus()
 {
-    QMenuBar *menuBar = m_menuBar;
+    QMenuBar* menuBar = m_menuBar;
     // File Menu
-    QMenu *fileMenu = menuBar->addMenu(tr("文件"));
-    QAction *newFileAction = fileMenu->addAction(createFluentIcon("\ue8a5"), tr("新建文件"));
-    newFileAction->setShortcut(QKeySequence("Ctrl+N"));
-    g_actionIconMap[newFileAction] = "\ue8a5";
+    QMenu* fileMenu        = menuBar->addMenu( tr( "文件" ) );
+    QAction* newFileAction = fileMenu->addAction( createFluentIcon( "\ue8a5" ), tr( "新建文件" ) );
+    newFileAction->setShortcut( QKeySequence( "Ctrl+N" ) );
+    g_actionIconMap[ newFileAction ] = "\ue8a5";
 
-    QAction *newProjectAction = fileMenu->addAction(createFluentIcon("\ue8b5"), tr("新建项目"));
-    g_actionIconMap[newProjectAction] = "\ue8b5";
+    QAction* newProjectAction           = fileMenu->addAction( createFluentIcon( "\ue8b5" ), tr( "新建项目" ) );
+    g_actionIconMap[ newProjectAction ] = "\ue8b5";
 
-    QMenu *recentMenu = fileMenu->addMenu(createFluentIcon("\ue8c3"), tr("最近打开"));
-    g_menuIconMap[recentMenu] = "\ue8c3";
-    recentMenu->addAction("project1");
-    recentMenu->addAction("project2");
-    recentMenu->addAction("example.cpp");
+    QMenu* recentMenu           = fileMenu->addMenu( createFluentIcon( "\ue8c3" ), tr( "最近打开" ) );
+    g_menuIconMap[ recentMenu ] = "\ue8c3";
+    recentMenu->addAction( "project1" );
+    recentMenu->addAction( "project2" );
+    recentMenu->addAction( "example.cpp" );
 
-    QAction *openFileAction = fileMenu->addAction(createFluentIcon("\ue8a5"), tr("打开文件"));
-    openFileAction->setShortcut(QKeySequence("Ctrl+O"));
-    g_actionIconMap[openFileAction] = "\ue8a5";
+    QAction* openFileAction = fileMenu->addAction( createFluentIcon( "\ue8a5" ), tr( "打开文件" ) );
+    openFileAction->setShortcut( QKeySequence( "Ctrl+O" ) );
+    g_actionIconMap[ openFileAction ] = "\ue8a5";
 
-    QAction *openProjectAction = fileMenu->addAction(createFluentIcon("\ue8b5"), tr("打开项目"));
-    g_actionIconMap[openProjectAction] = "\ue8b5";
-
-    fileMenu->addSeparator();
-
-    QAction *saveAction = fileMenu->addAction(createFluentIcon("\ue74e"), tr("保存"));
-    saveAction->setShortcut(QKeySequence("Ctrl+S"));
-    g_actionIconMap[saveAction] = "\ue74e";
-
-    QAction *saveAsAction = fileMenu->addAction(createFluentIcon("\ue74e"), tr("另存为"));
-    saveAsAction->setShortcut(QKeySequence("Ctrl+Shift+S"));
-    g_actionIconMap[saveAsAction] = "\ue74e";
+    QAction* openProjectAction           = fileMenu->addAction( createFluentIcon( "\ue8b5" ), tr( "打开项目" ) );
+    g_actionIconMap[ openProjectAction ] = "\ue8b5";
 
     fileMenu->addSeparator();
 
-    QAction *closeFileAction = fileMenu->addAction(createFluentIcon("\ue8bb"), tr("关闭文件"));
-    g_actionIconMap[closeFileAction] = "\ue8bb";
+    QAction* saveAction = fileMenu->addAction( createFluentIcon( "\ue74e" ), tr( "保存" ) );
+    saveAction->setShortcut( QKeySequence( "Ctrl+S" ) );
+    g_actionIconMap[ saveAction ] = "\ue74e";
 
-    QAction *exitAction = fileMenu->addAction(createFluentIcon("\ue8bb"), tr("退出"));
-    exitAction->setShortcut(QKeySequence("Ctrl+Q"));
-    g_actionIconMap[exitAction] = "\ue8bb";
+    QAction* saveAsAction = fileMenu->addAction( createFluentIcon( "\ue74e" ), tr( "另存为" ) );
+    saveAsAction->setShortcut( QKeySequence( "Ctrl+Shift+S" ) );
+    g_actionIconMap[ saveAsAction ] = "\ue74e";
+
+    fileMenu->addSeparator();
+
+    QAction* closeFileAction           = fileMenu->addAction( createFluentIcon( "\ue8bb" ), tr( "关闭文件" ) );
+    g_actionIconMap[ closeFileAction ] = "\ue8bb";
+
+    QAction* exitAction = fileMenu->addAction( createFluentIcon( "\ue8bb" ), tr( "退出" ) );
+    exitAction->setShortcut( QKeySequence( "Ctrl+Q" ) );
+    g_actionIconMap[ exitAction ] = "\ue8bb";
 
     // Edit Menu
-    QMenu *editMenu = menuBar->addMenu(tr("编辑"));
-    QAction *undoAction = editMenu->addAction(createFluentIcon("\ue7a7"), tr("撤销"));
-    undoAction->setShortcut(QKeySequence("Ctrl+Z"));
-    g_actionIconMap[undoAction] = "\ue7a7";
+    QMenu* editMenu     = menuBar->addMenu( tr( "编辑" ) );
+    QAction* undoAction = editMenu->addAction( createFluentIcon( "\ue7a7" ), tr( "撤销" ) );
+    undoAction->setShortcut( QKeySequence( "Ctrl+Z" ) );
+    g_actionIconMap[ undoAction ] = "\ue7a7";
 
-    QAction *redoAction = editMenu->addAction(createFluentIcon("\ue7a6"), tr("重做"));
-    redoAction->setShortcut(QKeySequence("Ctrl+Y"));
-    g_actionIconMap[redoAction] = "\ue7a6";
-
-    editMenu->addSeparator();
-
-    QAction *cutAction = editMenu->addAction(createFluentIcon("\ue8c6"), tr("剪切"));
-    cutAction->setShortcut(QKeySequence("Ctrl+X"));
-    g_actionIconMap[cutAction] = "\ue8c6";
-
-    QAction *copyAction = editMenu->addAction(createFluentIcon("\ue8c8"), tr("复制"));
-    copyAction->setShortcut(QKeySequence("Ctrl+C"));
-    g_actionIconMap[copyAction] = "\ue8c8";
-
-    QAction *pasteAction = editMenu->addAction(createFluentIcon("\ue8c7"), tr("粘贴"));
-    pasteAction->setShortcut(QKeySequence("Ctrl+V"));
-    g_actionIconMap[pasteAction] = "\ue8c7";
+    QAction* redoAction = editMenu->addAction( createFluentIcon( "\ue7a6" ), tr( "重做" ) );
+    redoAction->setShortcut( QKeySequence( "Ctrl+Y" ) );
+    g_actionIconMap[ redoAction ] = "\ue7a6";
 
     editMenu->addSeparator();
 
-    QAction *findAction = editMenu->addAction(createFluentIcon("\ue721"), tr("查找"));
-    findAction->setShortcut(QKeySequence("Ctrl+F"));
-    g_actionIconMap[findAction] = "\ue721";
+    QAction* cutAction = editMenu->addAction( createFluentIcon( "\ue8c6" ), tr( "剪切" ) );
+    cutAction->setShortcut( QKeySequence( "Ctrl+X" ) );
+    g_actionIconMap[ cutAction ] = "\ue8c6";
 
-    QAction *replaceAction = editMenu->addAction(createFluentIcon("\ue8ac"), tr("替换"));
-    replaceAction->setShortcut(QKeySequence("Ctrl+H"));
-    g_actionIconMap[replaceAction] = "\ue8ac";
+    QAction* copyAction = editMenu->addAction( createFluentIcon( "\ue8c8" ), tr( "复制" ) );
+    copyAction->setShortcut( QKeySequence( "Ctrl+C" ) );
+    g_actionIconMap[ copyAction ] = "\ue8c8";
 
-    QMenu *advancedMenu = editMenu->addMenu(createFluentIcon("\ue713"), tr("高级"));
-    g_menuIconMap[advancedMenu] = "\ue713";
-    QAction *autoFormatAction = advancedMenu->addAction(createFluentIcon("\ue930"), tr("自动格式化"));
-    autoFormatAction->setCheckable(true);
-    g_actionIconMap[autoFormatAction] = "\ue930";
+    QAction* pasteAction = editMenu->addAction( createFluentIcon( "\ue8c7" ), tr( "粘贴" ) );
+    pasteAction->setShortcut( QKeySequence( "Ctrl+V" ) );
+    g_actionIconMap[ pasteAction ] = "\ue8c7";
 
-    QAction *sortLinesAction = advancedMenu->addAction(createFluentIcon("\ue930"), tr("排序行"));
-    g_actionIconMap[sortLinesAction] = "\ue930";
+    editMenu->addSeparator();
 
-    QAction *deleteEmptyLinesAction = advancedMenu->addAction(createFluentIcon("\ue8bb"), tr("删除空行"));
-    g_actionIconMap[deleteEmptyLinesAction] = "\ue8bb";
+    QAction* findAction = editMenu->addAction( createFluentIcon( "\ue721" ), tr( "查找" ) );
+    findAction->setShortcut( QKeySequence( "Ctrl+F" ) );
+    g_actionIconMap[ findAction ] = "\ue721";
+
+    QAction* replaceAction = editMenu->addAction( createFluentIcon( "\ue8ac" ), tr( "替换" ) );
+    replaceAction->setShortcut( QKeySequence( "Ctrl+H" ) );
+    g_actionIconMap[ replaceAction ] = "\ue8ac";
+
+    QMenu* advancedMenu           = editMenu->addMenu( createFluentIcon( "\ue713" ), tr( "高级" ) );
+    g_menuIconMap[ advancedMenu ] = "\ue713";
+    QAction* autoFormatAction     = advancedMenu->addAction( createFluentIcon( "\ue930" ), tr( "自动格式化" ) );
+    autoFormatAction->setCheckable( true );
+    g_actionIconMap[ autoFormatAction ] = "\ue930";
+
+    QAction* sortLinesAction           = advancedMenu->addAction( createFluentIcon( "\ue930" ), tr( "排序行" ) );
+    g_actionIconMap[ sortLinesAction ] = "\ue930";
+
+    QAction* deleteEmptyLinesAction           = advancedMenu->addAction( createFluentIcon( "\ue8bb" ), tr( "删除空行" ) );
+    g_actionIconMap[ deleteEmptyLinesAction ] = "\ue8bb";
 
     // View Menu
-    QMenu *viewMenu = menuBar->addMenu(tr("视图"));
-    QAction *showToolbarAction = viewMenu->addAction(createFluentIcon("\ue728"), tr("显示工具栏"));
-    showToolbarAction->setCheckable(true);
-    showToolbarAction->setChecked(true);
-    g_actionIconMap[showToolbarAction] = "\ue728";
+    QMenu* viewMenu            = menuBar->addMenu( tr( "视图" ) );
+    QAction* showToolbarAction = viewMenu->addAction( createFluentIcon( "\ue728" ), tr( "显示工具栏" ) );
+    showToolbarAction->setCheckable( true );
+    showToolbarAction->setChecked( true );
+    g_actionIconMap[ showToolbarAction ] = "\ue728";
 
-    QAction *showStatusBarAction = viewMenu->addAction(createFluentIcon("\ue9d9"), tr("显示状态栏"));
-    showStatusBarAction->setCheckable(true);
-    showStatusBarAction->setChecked(true);
-    g_actionIconMap[showStatusBarAction] = "\ue9d9";
+    QAction* showStatusBarAction = viewMenu->addAction( createFluentIcon( "\ue9d9" ), tr( "显示状态栏" ) );
+    showStatusBarAction->setCheckable( true );
+    showStatusBarAction->setChecked( true );
+    g_actionIconMap[ showStatusBarAction ] = "\ue9d9";
 
     viewMenu->addSeparator();
 
-    QAction *showSidebarAction = viewMenu->addAction(createFluentIcon("\ue728"), tr("显示侧边栏"));
-    showSidebarAction->setCheckable(true);
-    showSidebarAction->setChecked(true);
-    g_actionIconMap[showSidebarAction] = "\ue728";
+    QAction* showSidebarAction = viewMenu->addAction( createFluentIcon( "\ue728" ), tr( "显示侧边栏" ) );
+    showSidebarAction->setCheckable( true );
+    showSidebarAction->setChecked( true );
+    g_actionIconMap[ showSidebarAction ] = "\ue728";
 
-    QAction *showOutputAction = viewMenu->addAction(createFluentIcon("\ue7e8"), tr("显示输出窗口"));
-    showOutputAction->setCheckable(true);
-    g_actionIconMap[showOutputAction] = "\ue7e8";
+    QAction* showOutputAction = viewMenu->addAction( createFluentIcon( "\ue7e8" ), tr( "显示输出窗口" ) );
+    showOutputAction->setCheckable( true );
+    g_actionIconMap[ showOutputAction ] = "\ue7e8";
 
-    QMenu *zoomMenu = viewMenu->addMenu(createFluentIcon("\ue71e"), tr("缩放"));
-    g_menuIconMap[zoomMenu] = "\ue71e";
-    zoomMenu->addAction(tr("放大"));
-    zoomMenu->addAction(tr("缩小"));
-    zoomMenu->addAction(tr("恢复默认"));
+    QMenu* zoomMenu           = viewMenu->addMenu( createFluentIcon( "\ue71e" ), tr( "缩放" ) );
+    g_menuIconMap[ zoomMenu ] = "\ue71e";
+    zoomMenu->addAction( tr( "放大" ) );
+    zoomMenu->addAction( tr( "缩小" ) );
+    zoomMenu->addAction( tr( "恢复默认" ) );
 
     // Build Menu
-    QMenu *buildMenu = menuBar->addMenu(tr("构建"));
-    QAction *buildProjectAction = buildMenu->addAction(createFluentIcon("\ue7b8"), tr("构建项目"));
-    buildProjectAction->setShortcut(QKeySequence("Ctrl+B"));
-    g_actionIconMap[buildProjectAction] = "\ue7b8";
+    QMenu* buildMenu            = menuBar->addMenu( tr( "构建" ) );
+    QAction* buildProjectAction = buildMenu->addAction( createFluentIcon( "\ue7b8" ), tr( "构建项目" ) );
+    buildProjectAction->setShortcut( QKeySequence( "Ctrl+B" ) );
+    g_actionIconMap[ buildProjectAction ] = "\ue7b8";
 
-    QAction *rebuildAction = buildMenu->addAction(createFluentIcon("\ue7b8"), tr("重新构建"));
-    g_actionIconMap[rebuildAction] = "\ue7b8";
+    QAction* rebuildAction           = buildMenu->addAction( createFluentIcon( "\ue7b8" ), tr( "重新构建" ) );
+    g_actionIconMap[ rebuildAction ] = "\ue7b8";
 
     buildMenu->addSeparator();
 
-    QAction *runAction = buildMenu->addAction(createFluentIcon("\ue768"), tr("运行"));
-    g_actionIconMap[runAction] = "\ue768";
+    QAction* runAction           = buildMenu->addAction( createFluentIcon( "\ue768" ), tr( "运行" ) );
+    g_actionIconMap[ runAction ] = "\ue768";
 
-    QAction *debugAction = buildMenu->addAction(createFluentIcon("\ue7a6"), tr("调试"));
-    g_actionIconMap[debugAction] = "\ue7a6";
+    QAction* debugAction           = buildMenu->addAction( createFluentIcon( "\ue7a6" ), tr( "调试" ) );
+    g_actionIconMap[ debugAction ] = "\ue7a6";
 
-    QMenu *buildTargetMenu = buildMenu->addMenu(createFluentIcon("\ue8b5"), tr("构建目标"));
-    g_menuIconMap[buildTargetMenu] = "\ue8b5";
-    buildTargetMenu->addAction("Debug");
-    buildTargetMenu->addAction("Release");
+    QMenu* buildTargetMenu           = buildMenu->addMenu( createFluentIcon( "\ue8b5" ), tr( "构建目标" ) );
+    g_menuIconMap[ buildTargetMenu ] = "\ue8b5";
+    buildTargetMenu->addAction( "Debug" );
+    buildTargetMenu->addAction( "Release" );
 
     // Help Menu
-    QMenu *helpMenu = menuBar->addMenu(tr("帮助"));
-    QAction *docsAction = helpMenu->addAction(createFluentIcon("\ue8a5"), tr("文档"));
-    g_actionIconMap[docsAction] = "\ue8a5";
-
-    QAction *apiAction = helpMenu->addAction(createFluentIcon("\ue8a5"), tr("API参考"));
-    g_actionIconMap[apiAction] = "\ue8a5";
+    QMenu* helpMenu               = menuBar->addMenu( tr( "帮助" ) );
+    QAction* tourAction           = helpMenu->addAction( createFluentIcon( "\ue897" ), tr( "功能导览" ) );
+    g_actionIconMap[ tourAction ] = "\ue897";
+    connect( tourAction, &QAction::triggered, this, &MainWindow::startGalleryTour );
 
     helpMenu->addSeparator();
 
-    QAction *updateAction = helpMenu->addAction(createFluentIcon("\ue7b8"), tr("检查更新"));
-    g_actionIconMap[updateAction] = "\ue7b8";
+    QAction* docsAction           = helpMenu->addAction( createFluentIcon( "\ue8a5" ), tr( "文档" ) );
+    g_actionIconMap[ docsAction ] = "\ue8a5";
+
+    QAction* apiAction           = helpMenu->addAction( createFluentIcon( "\ue8a5" ), tr( "API参考" ) );
+    g_actionIconMap[ apiAction ] = "\ue8a5";
 
     helpMenu->addSeparator();
 
-    QAction *aboutAction = helpMenu->addAction(createFluentIcon("\ue946"), tr("关于"));
-    g_actionIconMap[aboutAction] = "\ue946";
+    QAction* updateAction           = helpMenu->addAction( createFluentIcon( "\ue7b8" ), tr( "检查更新" ) );
+    g_actionIconMap[ updateAction ] = "\ue7b8";
+
+    helpMenu->addSeparator();
+
+    QAction* aboutAction           = helpMenu->addAction( createFluentIcon( "\ue946" ), tr( "关于" ) );
+    g_actionIconMap[ aboutAction ] = "\ue946";
 }
 
 void MainWindow::rebuildMenuAndToolBar()
 {
+    if ( m_galleryTour && m_galleryTour->isRunning() )
+    {
+        m_galleryTour->exit();
+    }
+
     // Clear icon maps
     g_actionIconMap.clear();
     g_menuIconMap.clear();
     m_menuBar->clear();
-    if (m_toolBar)
+    if ( m_toolBar )
     {
         // Toolbar controls may be reparented to the main window; disconnect before teardown so
         // destructors cannot emit signals that run lambdas using member pointers we are about to clear.
-        if (themeComboBox)
+        if ( themeComboBox )
         {
-            QObject::disconnect(themeComboBox, nullptr, this, nullptr);
+            QObject::disconnect( themeComboBox, nullptr, this, nullptr );
         }
-        if (m_colorSchemeCombo)
+        if ( m_colorSchemeCombo )
         {
-            QObject::disconnect(m_colorSchemeCombo, nullptr, this, nullptr);
+            QObject::disconnect( m_colorSchemeCombo, nullptr, this, nullptr );
         }
-        if (m_styleComboBox)
+        if ( m_styleComboBox )
         {
-            QObject::disconnect(m_styleComboBox, nullptr, this, nullptr);
+            QObject::disconnect( m_styleComboBox, nullptr, this, nullptr );
         }
-        if (m_tabBarWidgetBg)
+        if ( m_tabBarWidgetBg )
         {
-            QObject::disconnect(m_tabBarWidgetBg, nullptr, this, nullptr);
+            QObject::disconnect( m_tabBarWidgetBg, nullptr, this, nullptr );
         }
 
         m_navigationToggleAction = nullptr;
-        themeComboBox = nullptr;
-        m_colorSchemeCombo = nullptr;
-        m_styleComboBox = nullptr;
-        m_tabBarWidgetBg = nullptr;
+        themeComboBox            = nullptr;
+        m_colorSchemeCombo       = nullptr;
+        m_styleComboBox          = nullptr;
+        m_tabBarWidgetBg         = nullptr;
 
         delete m_toolBar;
         m_toolBar = nullptr;
@@ -1056,178 +1070,264 @@ void MainWindow::rebuildMenuAndToolBar()
     buildMainMenus();
 
     // Initialize toolbar
-    m_toolBar = addToolBar(tr("工具栏"));
+    m_toolBar = addToolBar( tr( "工具栏" ) );
 
-    m_navigationToggleAction = addToolBarAction(m_toolBar, QStringLiteral("\uE700"), QString(), QKeySequence());
-    if (m_navigationToggleAction)
+    m_navigationToggleAction = addToolBarAction( m_toolBar, QStringLiteral( "\uE700" ), QString(), QKeySequence() );
+    if ( m_navigationToggleAction )
     {
-        connect(m_navigationToggleAction,
-                &QAction::triggered,
-                this,
-                [this](bool checked)
-                {
-                    Q_UNUSED(checked);
-                    if (!m_winUINavigationView)
-                    {
-                        return;
-                    }
-                    const bool expand = m_winUINavigationView->navigationExpanded();
-                    m_winUINavigationView->setNavigationExpanded(!expand);
-                    ui->rBOnlyIcon->setChecked(expand);
-                    ui->rBIconAndText->setChecked(!expand);
-                });
+        connect( m_navigationToggleAction,
+                 &QAction::triggered,
+                 this,
+                 [ this ]( bool checked )
+                 {
+                     Q_UNUSED( checked );
+                     if ( !m_winUINavigationView )
+                     {
+                         return;
+                     }
+                     const bool expand = m_winUINavigationView->navigationExpanded();
+                     m_winUINavigationView->setNavigationExpanded( !expand );
+                     ui->rBOnlyIcon->setChecked( expand );
+                     ui->rBIconAndText->setChecked( !expand );
+                 } );
     }
     m_toolBar->addSeparator();
 
     // Add file actions
-    addToolBarAction(m_toolBar, "\ue8a5", tr("新建"), QKeySequence("Ctrl+N"));
-    addToolBarAction(m_toolBar, "\ue8a5", tr("打开"), QKeySequence("Ctrl+O"));
-    addToolBarAction(m_toolBar, "\ue74e", tr("保存"), QKeySequence("Ctrl+S"));
+    addToolBarAction( m_toolBar, "\ue8a5", tr( "新建" ), QKeySequence( "Ctrl+N" ) );
+    addToolBarAction( m_toolBar, "\ue8a5", tr( "打开" ), QKeySequence( "Ctrl+O" ) );
+    addToolBarAction( m_toolBar, "\ue74e", tr( "保存" ), QKeySequence( "Ctrl+S" ) );
 
     m_toolBar->addSeparator();
 
     // Add edit actions
-    addToolBarAction(m_toolBar, "\ue7a7", tr("撤销"), QKeySequence("Ctrl+Z"));
-    addToolBarAction(m_toolBar, "\ue7a6", tr("重做"), QKeySequence("Ctrl+Y"));
+    addToolBarAction( m_toolBar, "\ue7a7", tr( "撤销" ), QKeySequence( "Ctrl+Z" ) );
+    addToolBarAction( m_toolBar, "\ue7a6", tr( "重做" ), QKeySequence( "Ctrl+Y" ) );
 
     m_toolBar->addSeparator();
 
-    addToolBarAction(m_toolBar, "\ue8c6", tr("剪切"), QKeySequence("Ctrl+X"));
-    addToolBarAction(m_toolBar, "\ue8c8", tr("复制"), QKeySequence("Ctrl+C"));
-    addToolBarAction(m_toolBar, "\ue8c7", tr("粘贴"), QKeySequence("Ctrl+V"));
+    addToolBarAction( m_toolBar, "\ue8c6", tr( "剪切" ), QKeySequence( "Ctrl+X" ) );
+    addToolBarAction( m_toolBar, "\ue8c8", tr( "复制" ), QKeySequence( "Ctrl+C" ) );
+    addToolBarAction( m_toolBar, "\ue8c7", tr( "粘贴" ), QKeySequence( "Ctrl+V" ) );
 
     m_toolBar->addSeparator();
 
     // Add build actions
-    addToolBarAction(m_toolBar, "\ue7b8", tr("构建"), QKeySequence("Ctrl+B"));
-    addToolBarAction(m_toolBar, "\ue7b8", tr("重新构建"), QKeySequence());
-    addToolBarAction(m_toolBar, "\ue768", tr("运行"), QKeySequence());
+    addToolBarAction( m_toolBar, "\ue7b8", tr( "构建" ), QKeySequence( "Ctrl+B" ) );
+    addToolBarAction( m_toolBar, "\ue7b8", tr( "重新构建" ), QKeySequence() );
+    addToolBarAction( m_toolBar, "\ue768", tr( "运行" ), QKeySequence() );
 
     m_toolBar->addSeparator();
 
     // Add toolbar controls
-    setupToolBarControls(m_toolBar);
+    setupToolBarControls( m_toolBar );
 
-    m_toolBar->setAttribute(Qt::WA_TranslucentBackground, true);
-    m_toolBar->setAttribute(Qt::WA_StyledBackground, false);
-    m_toolBar->setAutoFillBackground(false);
+    m_toolBar->setAttribute( Qt::WA_TranslucentBackground, true );
+    m_toolBar->setAttribute( Qt::WA_StyledBackground, false );
+    m_toolBar->setAutoFillBackground( false );
 }
 
-QAction *MainWindow::addToolBarAction(QToolBar *toolBar, const QString &iconCode, const QString &text, const QKeySequence &shortcut)
+QAction* MainWindow::addToolBarAction( QToolBar* toolBar, const QString& iconCode, const QString& text, const QKeySequence& shortcut )
 {
-    const QString label = text.isEmpty() ? QString() : tr(text.toUtf8().constData());
-    QAction *action = toolBar->addAction(createFluentIcon(iconCode), label);
-    if (!shortcut.isEmpty())
+    const QString label = text.isEmpty() ? QString() : tr( text.toUtf8().constData() );
+    QAction* action     = toolBar->addAction( createFluentIcon( iconCode ), label );
+    if ( !shortcut.isEmpty() )
     {
-        action->setShortcut(shortcut);
+        action->setShortcut( shortcut );
     }
-    g_actionIconMap[action] = iconCode;
+    g_actionIconMap[ action ] = iconCode;
     return action;
 }
 
-void MainWindow::setupToolBarControls(QToolBar *toolBar)
+void MainWindow::setupToolBarControls( QToolBar* toolBar )
 {
     // Disable widget checkbox
-    QCheckBox *disableCheckBox = new QCheckBox(tr("禁用"), toolBar);
-    disableCheckBox->setProperty("isSwitchButton", true);
-    connect(disableCheckBox, &QCheckBox::clicked, this, [this](bool checked)
-            { centralWidget()->setEnabled(!checked); });
-    toolBar->addWidget(disableCheckBox);
+    QCheckBox* disableCheckBox = new QCheckBox( tr( "禁用" ), toolBar );
+    disableCheckBox->setProperty( "isSwitchButton", true );
+    connect( disableCheckBox, &QCheckBox::clicked, this, [ this ]( bool checked ) { centralWidget()->setEnabled( !checked ); } );
+    toolBar->addWidget( disableCheckBox );
     toolBar->addSeparator();
 
     // Theme selector
-    setupThemeSelector(toolBar);
+    setupThemeSelector( toolBar );
     toolBar->addSeparator();
 
     // Color scheme selector
-    setupColorSchemeSelector(toolBar);
+    setupColorSchemeSelector( toolBar );
     toolBar->addSeparator();
 
     // Style selector
-    setupStyleSelector(toolBar);
+    setupStyleSelector( toolBar );
     toolBar->addSeparator();
 
     // Widget background mode selector
-    setupWidgetBackgroundSelector(toolBar);
+    setupWidgetBackgroundSelector( toolBar );
+
+    toolBar->addSeparator();
+
+    // Tour guide action
+    QAction* tourAction = addToolBarAction( toolBar, "\ue897", tr( "导览" ), QKeySequence() );
+    if ( tourAction )
+    {
+        tourAction->setToolTip( tr( "界面功能导览向导" ) );
+        connect( tourAction, &QAction::triggered, this, &MainWindow::startGalleryTour );
+    }
 }
 
 void MainWindow::setupTitleBarChrome()
 {
 #ifdef GALLERY_ENABLE_FRAMELESS
-    FluentTitleBar *titleBar = m_windowFrame ? m_windowFrame->titleBar() : nullptr;
-    if (!titleBar)
+    FluentTitleBar* titleBar = m_windowFrame ? m_windowFrame->titleBar() : nullptr;
+    if ( !titleBar )
     {
         return;
     }
 
-    const bool isDark = qApp->property("_q_colorscheme").toInt() == 1;
-    titleBar->setThemeDark(isDark);
+    const bool isDark = qApp->property( "_q_colorscheme" ).toInt() == 1;
+    titleBar->setThemeDark( isDark );
 
-    connect(titleBar->themeButton(), &QToolButton::clicked, this, [this]() {
-        const int current = qApp->property("_q_colorscheme").toInt();
-        applyThemeIndex(current == 1 ? 0 : 1);
-    });
+    connect( titleBar->themeButton(),
+             &QToolButton::clicked,
+             this,
+             [ this ]()
+             {
+                 const int current = qApp->property( "_q_colorscheme" ).toInt();
+                 applyThemeIndex( current == 1 ? 0 : 1 );
+             } );
 
-    connect(titleBar->pinButton(), &QToolButton::toggled, this, [this, titleBar](bool checked) {
-        // setWindowFlag(Qt::WindowStaysOnTopHint, checked);
-        setTopMost(this, checked);
-        titleBar->setPinned(checked);
-    });
+    connect( titleBar->pinButton(),
+             &QToolButton::toggled,
+             this,
+             [ this, titleBar ]( bool checked )
+             {
+                 // setWindowFlag(Qt::WindowStaysOnTopHint, checked);
+                 setTopMost( this, checked );
+                 titleBar->setPinned( checked );
+             } );
 
-    connect(titleBar, &FluentTitleBar::accentColorChanged, this, [](const QColor &color) {
-        applyAccentColor(color);
-    });
+    connect( titleBar, &FluentTitleBar::accentColorChanged, this, []( const QColor& color ) { applyAccentColor( color ); } );
 #endif
 }
 
-void MainWindow::applyThemeIndex(int index)
+void MainWindow::setupGalleryTour()
 {
-    if (themeComboBox)
+    if ( !m_galleryTour )
     {
-        themeComboBox->blockSignals(true);
-        themeComboBox->setCurrentIndex(index);
-        themeComboBox->blockSignals(false);
+        m_galleryTour = new ExTour( this );
+    }
+}
+
+void MainWindow::startGalleryTour()
+{
+    setupGalleryTour();
+
+    QList<ExTourStep> steps;
+
+    // 1. 标题栏的切换主题按钮
+    QWidget* themeTarget = nullptr;
+#ifdef GALLERY_ENABLE_FRAMELESS
+    if ( m_windowFrame && m_windowFrame->titleBar() )
+    {
+        themeTarget = m_windowFrame->titleBar()->themeButton();
+    }
+#endif
+    if ( !themeTarget && themeComboBox )
+    {
+        themeTarget = themeComboBox;
     }
 
-    qApp->setProperty("_q_colorscheme", index);
+    if ( themeTarget && themeTarget->isVisible() )
+    {
+        ExTourStep step;
+        step.target      = themeTarget;
+        step.title       = tr( "切换主题模式" );
+        step.description = tr( "点击此处可以在浅色与深色主题之间快速切换，实时预览沉浸式 Fluent 视觉设计风格。" );
+        step.placement   = ExTourStep::Bottom;
+        steps.append( step );
+    }
+
+    // 2. 工具栏的窗口背景选择器
+    if ( m_tabBarWidgetBg && m_tabBarWidgetBg->isVisible() )
+    {
+        ExTourStep step;
+        step.target      = m_tabBarWidgetBg;
+        step.title       = tr( "窗口材质背景" );
+        step.description = tr( "支持切换窗口背景效果：经典无背景、亚克力背景图片，以及 Windows 11 原生 DWM 亚克力与云母模糊材质。" );
+        step.placement   = ExTourStep::Bottom;
+        steps.append( step );
+    }
+
+    // 3. 工具栏控制左侧导航栏是否 Expand 的 Action
+    QWidget* navTarget = nullptr;
+    if ( m_toolBar && m_navigationToggleAction )
+    {
+        navTarget = m_toolBar->widgetForAction( m_navigationToggleAction );
+    }
+    if ( navTarget && navTarget->isVisible() )
+    {
+        ExTourStep step;
+        step.target      = navTarget;
+        step.title       = tr( "展开/折叠导航栏" );
+        step.description = tr( "点击汉堡菜单按钮，可以在“紧凑图标模式”与“完整文字展开模式”之间自由切换侧边导航栏。" );
+        step.placement   = ExTourStep::Bottom;
+        steps.append( step );
+    }
+
+    if ( steps.isEmpty() )
+    {
+        return;
+    }
+
+    m_galleryTour->setSteps( steps );
+    m_galleryTour->start( 0 );
+}
+
+void MainWindow::applyThemeIndex( int index )
+{
+    if ( themeComboBox )
+    {
+        themeComboBox->blockSignals( true );
+        themeComboBox->setCurrentIndex( index );
+        themeComboBox->blockSignals( false );
+    }
+
+    qApp->setProperty( "_q_colorscheme", index );
     refreshFluentStyle();
     updateActionIcons();
 
-    if (index == 0)
+    if ( index == 0 )
     {
-        ui->rBLightTheme->setChecked(true);
+        ui->rBLightTheme->setChecked( true );
     }
     else
     {
-        ui->rBDarkTheme->setChecked(true);
+        ui->rBDarkTheme->setChecked( true );
     }
 
 #ifdef GALLERY_ENABLE_FRAMELESS
-    if (FluentTitleBar *titleBar = m_windowFrame ? m_windowFrame->titleBar() : nullptr)
+    if ( FluentTitleBar* titleBar = m_windowFrame ? m_windowFrame->titleBar() : nullptr )
     {
-        titleBar->setThemeDark(index == 1);
+        titleBar->setThemeDark( index == 1 );
     }
 #endif
 }
 
-void MainWindow::setupThemeSelector(QToolBar *toolBar)
+void MainWindow::setupThemeSelector( QToolBar* toolBar )
 {
-    QLabel *themeLabel = new QLabel(tr("主题："), toolBar);
-    toolBar->addWidget(themeLabel);
+    QLabel* themeLabel = new QLabel( tr( "主题：" ), toolBar );
+    toolBar->addWidget( themeLabel );
 
-    themeComboBox = new ExComboBox(toolBar);
-    themeComboBox->blockSignals(true);
-    themeComboBox->addItem(tr("浅色"));
-    themeComboBox->addItem(tr("暗色"));
-    themeComboBox->blockSignals(false);
-    themeComboBox->setView(new QListView());
+    themeComboBox = new ExComboBox( toolBar );
+    themeComboBox->blockSignals( true );
+    themeComboBox->addItem( tr( "浅色" ) );
+    themeComboBox->addItem( tr( "暗色" ) );
+    themeComboBox->blockSignals( false );
+    themeComboBox->setView( new QListView() );
 
-    themeComboBox->setCurrentIndex(qApp->property("_q_colorscheme").toInt() == 1 ? 1 : 0);
+    themeComboBox->setCurrentIndex( qApp->property( "_q_colorscheme" ).toInt() == 1 ? 1 : 0 );
 
-    connect(themeComboBox,
-            QOverload<int>::of(&QComboBox::currentIndexChanged),
-            this,
-            [this](int index) { applyThemeIndex(index); });
+    connect(
+        themeComboBox, QOverload<int>::of( &QComboBox::currentIndexChanged ), this, [ this ]( int index ) { applyThemeIndex( index ); } );
 
     if ( themeComboBox->currentIndex() == 1 )
     {
@@ -1238,75 +1338,75 @@ void MainWindow::setupThemeSelector(QToolBar *toolBar)
         ui->rBLightTheme->setChecked( true );
     }
 
-    toolBar->addWidget(themeComboBox);
+    toolBar->addWidget( themeComboBox );
 }
 
-void MainWindow::setupColorSchemeSelector(QToolBar *toolBar)
+void MainWindow::setupColorSchemeSelector( QToolBar* toolBar )
 {
-    QLabel *colorSchemeLabel = new QLabel(tr("配色："), toolBar);
-    toolBar->addWidget(colorSchemeLabel);
+    QLabel* colorSchemeLabel = new QLabel( tr( "配色：" ), toolBar );
+    toolBar->addWidget( colorSchemeLabel );
 
-    m_colorSchemeCombo = new ExComboBox(toolBar);
-    m_colorSchemeCombo->blockSignals(true);
-    m_colorSchemeCombo->addItem(QStringLiteral("Fluent"));
-    m_colorSchemeCombo->addItem(QStringLiteral("Teams"));
-    m_colorSchemeCombo->blockSignals(false);
-    m_colorSchemeCombo->setView(new QListView());
+    m_colorSchemeCombo = new ExComboBox( toolBar );
+    m_colorSchemeCombo->blockSignals( true );
+    m_colorSchemeCombo->addItem( QStringLiteral( "Fluent" ) );
+    m_colorSchemeCombo->addItem( QStringLiteral( "Teams" ) );
+    m_colorSchemeCombo->blockSignals( false );
+    m_colorSchemeCombo->setView( new QListView() );
 
-    connect(m_colorSchemeCombo,
-            QOverload<int>::of(&QComboBox::currentIndexChanged),
-            this,
-            [this](int index)
-            {
-                qApp->setProperty("_q_themestyle", index);
-                refreshFluentStyle();
-                updateActionIcons();
-            });
+    connect( m_colorSchemeCombo,
+             QOverload<int>::of( &QComboBox::currentIndexChanged ),
+             this,
+             [ this ]( int index )
+             {
+                 qApp->setProperty( "_q_themestyle", index );
+                 refreshFluentStyle();
+                 updateActionIcons();
+             } );
 
-    toolBar->addWidget(m_colorSchemeCombo);
+    toolBar->addWidget( m_colorSchemeCombo );
 }
 
-void MainWindow::setupStyleSelector(QToolBar *toolBar)
+void MainWindow::setupStyleSelector( QToolBar* toolBar )
 {
-    QLabel *styleLabel = new QLabel(tr("样式："), toolBar);
-    toolBar->addWidget(styleLabel);
+    QLabel* styleLabel = new QLabel( tr( "样式：" ), toolBar );
+    toolBar->addWidget( styleLabel );
 
-    m_styleComboBox = new ExComboBox(toolBar);
-    m_styleComboBox->addItems(QStyleFactory::keys());
-    m_styleComboBox->setView(new QListView());
+    m_styleComboBox = new ExComboBox( toolBar );
+    m_styleComboBox->addItems( QStyleFactory::keys() );
+    m_styleComboBox->setView( new QListView() );
 
     {
-        const QPointer<ExComboBox> comboGuard(m_styleComboBox);
-        connect(m_styleComboBox,
-                QOverload<int>::of(&QComboBox::currentIndexChanged),
-                this,
-                [this, comboGuard](int index)
-                {
-                    Q_UNUSED(index);
-                    if (!comboGuard)
-                    {
-                        return;
-                    }
-                    qApp->setStyle(comboGuard->currentText());
-                    updateActionIcons();
-                });
+        const QPointer<ExComboBox> comboGuard( m_styleComboBox );
+        connect( m_styleComboBox,
+                 QOverload<int>::of( &QComboBox::currentIndexChanged ),
+                 this,
+                 [ this, comboGuard ]( int index )
+                 {
+                     Q_UNUSED( index );
+                     if ( !comboGuard )
+                     {
+                         return;
+                     }
+                     qApp->setStyle( comboGuard->currentText() );
+                     updateActionIcons();
+                 } );
     }
 
-    toolBar->addWidget(m_styleComboBox);
+    toolBar->addWidget( m_styleComboBox );
 }
 
-void MainWindow::applyWidgetBgMode(WidgetBgMode mode)
+void MainWindow::applyWidgetBgMode( WidgetBgMode mode )
 {
     m_widgetBgMode = mode;
-    qApp->setProperty("_q_widget_mode", static_cast<int>(mode));
+    qApp->setProperty( "_q_widget_mode", static_cast<int>( mode ) );
     refreshFluentStyle();
 
 #ifdef GALLERY_ENABLE_FRAMELESS
-    if (m_windowFrame)
+    if ( m_windowFrame )
     {
-        if (widgetBgModeUsesBackdrop(mode))
+        if ( widgetBgModeUsesBackdrop( mode ) )
         {
-            m_windowFrame->setWindowBackdrop(widgetBgModeBackdropKey(mode));
+            m_windowFrame->setWindowBackdrop( widgetBgModeBackdropKey( mode ) );
         }
         else
         {
@@ -1318,39 +1418,39 @@ void MainWindow::applyWidgetBgMode(WidgetBgMode mode)
     update();
 }
 
-void MainWindow::setupWidgetBackgroundSelector(QToolBar *toolBar)
+void MainWindow::setupWidgetBackgroundSelector( QToolBar* toolBar )
 {
-    QLabel *widgetBgLabel = new QLabel(tr("窗口背景："), toolBar);
-    toolBar->addWidget(widgetBgLabel);
+    QLabel* widgetBgLabel = new QLabel( tr( "窗口背景：" ), toolBar );
+    toolBar->addWidget( widgetBgLabel );
 
-    m_tabBarWidgetBg = new QTabBar(toolBar);
-    m_tabBarWidgetBg->setProperty(TabBarStyleProperty, Segmented_WinUI3);
-    m_tabBarWidgetBg->addTab(tr("无"));
-    m_tabBarWidgetBg->addTab(tr("图片"));
-    m_tabBarWidgetBg->addTab(tr("DWM blur"));
+    m_tabBarWidgetBg = new QTabBar( toolBar );
+    m_tabBarWidgetBg->setProperty( TabBarStyleProperty, Segmented_WinUI3 );
+    m_tabBarWidgetBg->addTab( tr( "无" ) );
+    m_tabBarWidgetBg->addTab( tr( "图片" ) );
+    m_tabBarWidgetBg->addTab( tr( "DWM blur" ) );
 
-    toolBar->addWidget(m_tabBarWidgetBg);
+    toolBar->addWidget( m_tabBarWidgetBg );
 
-    connect(m_tabBarWidgetBg,
-            &QTabBar::currentChanged,
-            this,
-            [this](int index)
-            {
-                applyWidgetBgMode(static_cast<WidgetBgMode>(index));
+    connect( m_tabBarWidgetBg,
+             &QTabBar::currentChanged,
+             this,
+             [ this ]( int index )
+             {
+                 applyWidgetBgMode( static_cast<WidgetBgMode>( index ) );
 
-                if (index == 0)
-                {
-                    ui->rBWidgtModeNormal->setChecked(true);
-                }
-                else if (index == 1)
-                {
-                    ui->rBWidgetModePixmap->setChecked(true);
-                }
-                else if (index == 2)
-                {
-                    ui->rBWidgetModeDwmBlur->setChecked(true);
-                }
-            });
+                 if ( index == 0 )
+                 {
+                     ui->rBWidgtModeNormal->setChecked( true );
+                 }
+                 else if ( index == 1 )
+                 {
+                     ui->rBWidgetModePixmap->setChecked( true );
+                 }
+                 else if ( index == 2 )
+                 {
+                     ui->rBWidgetModeDwmBlur->setChecked( true );
+                 }
+             } );
 }
 
 //=============================================================================
@@ -1359,72 +1459,71 @@ void MainWindow::setupWidgetBackgroundSelector(QToolBar *toolBar)
 
 void MainWindow::initializeNavigationView()
 {
-    if (!m_winUINavigationView)
+    if ( !m_winUINavigationView )
     {
-        m_winUINavigationView = new ExWinUINavigationView(this);
-        m_winUINavigationView->setObjectName(QStringLiteral("winUINavigationView"));
-        m_winUINavigationView->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Expanding);
-        ui->navigationPaneLayout->addWidget(m_winUINavigationView, 0, 0);
+        m_winUINavigationView = new ExWinUINavigationView( this );
+        m_winUINavigationView->setObjectName( QStringLiteral( "winUINavigationView" ) );
+        m_winUINavigationView->setSizePolicy( QSizePolicy::Minimum, QSizePolicy::Expanding );
+        ui->navigationPaneLayout->addWidget( m_winUINavigationView, 0, 0 );
     }
 
     m_navView = m_winUINavigationView->mainNavView();
 
     m_mainNavItems.clear();
-    QTreeWidgetItem *basicControlsItem =
-        m_winUINavigationView->addNavigationItem(tr("基础控件"), 0, QStringLiteral("\uE80F"));
-    m_mainNavItems.push_back(basicControlsItem);
-    m_mainNavItems.push_back(m_winUINavigationView->addNavigationItem(tr("表格控件"), 1, QStringLiteral("\uE99A")));
-    m_mainNavItems.push_back(m_winUINavigationView->addNavigationItem(tr("列表控件"), 2, QStringLiteral("\uE71D")));
-    m_mainNavItems.push_back(m_winUINavigationView->addNavigationItem(tr("树形控件"), 3, QStringLiteral("\uED28")));
-    m_mainNavItems.push_back(m_winUINavigationView->addNavigationItem(tr("导航控件"), 4, QStringLiteral("\uE8B0")));
+    QTreeWidgetItem* basicControlsItem = m_winUINavigationView->addNavigationItem( tr( "基础控件" ), 0, QStringLiteral( "\uE80F" ) );
+    m_mainNavItems.push_back( basicControlsItem );
+    m_mainNavItems.push_back( m_winUINavigationView->addNavigationItem( tr( "表格控件" ), 1, QStringLiteral( "\uE99A" ) ) );
+    m_mainNavItems.push_back( m_winUINavigationView->addNavigationItem( tr( "列表控件" ), 2, QStringLiteral( "\uE71D" ) ) );
+    m_mainNavItems.push_back( m_winUINavigationView->addNavigationItem( tr( "树形控件" ), 3, QStringLiteral( "\uED28" ) ) );
+    m_mainNavItems.push_back( m_winUINavigationView->addNavigationItem( tr( "导航控件" ), 4, QStringLiteral( "\uE8B0" ) ) );
     addExWidgetsNavigation();
-    m_mainNavItems.push_back(m_winUINavigationView->addNavigationItem(QStringLiteral("Mdi"), 5, QStringLiteral("\uE9D9")));
-    m_mainNavItems.push_back(m_winUINavigationView->addNavigationItem(tr("图标库"), 7, QStringLiteral("\uE8FD")));
-    if (QWidget *dialogsPage = ui->stackedWidget->findChild<QWidget *>(QStringLiteral("pageDialogs")))
+    m_mainNavItems.push_back( m_winUINavigationView->addNavigationItem( QStringLiteral( "Mdi" ), 5, QStringLiteral( "\uE9D9" ) ) );
+    m_mainNavItems.push_back( m_winUINavigationView->addNavigationItem( tr( "图标库" ), 7, QStringLiteral( "\uE8FD" ) ) );
+    if ( QWidget* dialogsPage = ui->stackedWidget->findChild<QWidget*>( QStringLiteral( "pageDialogs" ) ) )
     {
-        const int pageIndex = ui->stackedWidget->indexOf(dialogsPage);
-        m_mainNavItems.push_back(m_winUINavigationView->addNavigationItem(tr("对话框"), pageIndex, QStringLiteral("\uE8F2")));
+        const int pageIndex = ui->stackedWidget->indexOf( dialogsPage );
+        m_mainNavItems.push_back( m_winUINavigationView->addNavigationItem( tr( "对话框" ), pageIndex, QStringLiteral( "\uE8F2" ) ) );
     }
     addTestNavigationTree();
 
-    if (QWidget *systemResourcesPage = ui->stackedWidget->findChild<QWidget *>(QStringLiteral("pageSystemResources")))
+    if ( QWidget* systemResourcesPage = ui->stackedWidget->findChild<QWidget*>( QStringLiteral( "pageSystemResources" ) ) )
     {
-        const int pageIndex = ui->stackedWidget->indexOf(systemResourcesPage);
-        m_winUINavigationView->addFooterNavigationItem(tr("系统监视"), pageIndex, QStringLiteral("\uE9D2"));
+        const int pageIndex = ui->stackedWidget->indexOf( systemResourcesPage );
+        m_winUINavigationView->addFooterNavigationItem( tr( "系统监视" ), pageIndex, QStringLiteral( "\uE9D2" ) );
     }
-    if (QWidget *changelogPage = ui->stackedWidget->findChild<QWidget *>(QStringLiteral("pageChangelogTimeline")))
+    if ( QWidget* changelogPage = ui->stackedWidget->findChild<QWidget*>( QStringLiteral( "pageChangelogTimeline" ) ) )
     {
-        const int pageIndex = ui->stackedWidget->indexOf(changelogPage);
-        m_winUINavigationView->addFooterNavigationItem(tr("更新日志"), pageIndex, QStringLiteral("\uE823"));
+        const int pageIndex = ui->stackedWidget->indexOf( changelogPage );
+        m_winUINavigationView->addFooterNavigationItem( tr( "更新日志" ), pageIndex, QStringLiteral( "\uE823" ) );
     }
-    m_navAboutItem = m_winUINavigationView->addFooterNavigationItem(tr("关于"), 8, QStringLiteral("\uE77B"));
-    if (QTreeWidgetItem *settingsItem = m_winUINavigationView->addFooterNavigationItem(tr("设置"), 6, QStringLiteral("\uE713")))
+    m_navAboutItem = m_winUINavigationView->addFooterNavigationItem( tr( "关于" ), 8, QStringLiteral( "\uE77B" ) );
+    if ( QTreeWidgetItem* settingsItem = m_winUINavigationView->addFooterNavigationItem( tr( "设置" ), 6, QStringLiteral( "\uE713" ) ) )
     {
         m_navSettingsItem = settingsItem;
-        settingsItem->setData(0, Qt::UserRole + 1001, true);
+        settingsItem->setData( 0, Qt::UserRole + 1001, true );
     }
 
-    m_winUINavigationView->setStackedWidget(ui->stackedWidget);
+    m_winUINavigationView->setStackedWidget( ui->stackedWidget );
 
-    m_winUINavigationView->setNavigationExpanded(true, false);
+    m_winUINavigationView->setNavigationExpanded( true, false );
 
     m_winUINavigationView->clearFooterSelection();
 }
 
 void MainWindow::addTestNavigationTree()
 {
-    m_navTestRoot = new QTreeWidgetItem(m_navView);
-    m_navView->configureNavigationItem(m_navTestRoot, tr("测试节点"), 6, QStringLiteral("\uE9F5"));
+    m_navTestRoot = new QTreeWidgetItem( m_navView );
+    m_navView->configureNavigationItem( m_navTestRoot, tr( "测试节点" ), 6, QStringLiteral( "\uE9F5" ) );
 
-    for (int i = 0; i < 5; ++i)
+    for ( int i = 0; i < 5; ++i )
     {
-        QTreeWidgetItem *childItem = new QTreeWidgetItem(m_navTestRoot);
-        m_navView->configureNavigationItem(childItem, tr("子节点%1").arg(i + 1), 6);
+        QTreeWidgetItem* childItem = new QTreeWidgetItem( m_navTestRoot );
+        m_navView->configureNavigationItem( childItem, tr( "子节点%1" ).arg( i + 1 ), 6 );
 
-        for (int j = 0; j < 3; ++j)
+        for ( int j = 0; j < 3; ++j )
         {
-            QTreeWidgetItem *subChildItem = new QTreeWidgetItem(childItem);
-            m_navView->configureNavigationItem(subChildItem, tr("子节点%1-%2").arg(i + 1).arg(j + 1), 6);
+            QTreeWidgetItem* subChildItem = new QTreeWidgetItem( childItem );
+            m_navView->configureNavigationItem( subChildItem, tr( "子节点%1-%2" ).arg( i + 1 ).arg( j + 1 ), 6 );
         }
     }
 }
@@ -1435,21 +1534,21 @@ void MainWindow::addTestNavigationTree()
 
 void MainWindow::setupTabs()
 {
-    QVBoxLayout *pageLayout = new QVBoxLayout(ui->page_4);
-    pageLayout->setContentsMargins(0, 0, 0, 0);
-    pageLayout->setSpacing(0);
+    QVBoxLayout* pageLayout = new QVBoxLayout( ui->page_4 );
+    pageLayout->setContentsMargins( 0, 0, 0, 0 );
+    pageLayout->setSpacing( 0 );
 
-    QScrollArea *scrollArea = new QScrollArea(ui->page_4);
-    scrollArea->setWidgetResizable(true);
-    scrollArea->setFrameShape(QFrame::StyledPanel);
-    scrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-    scrollArea->viewport()->setAutoFillBackground(false);
-    scrollArea->viewport()->setAttribute(Qt::WA_StyledBackground, false);
-    m_tabShowcaseWidget = new PageTab(scrollArea);
-    scrollArea->setWidget(m_tabShowcaseWidget);
-    m_tabShowcaseWidget->setAutoFillBackground(false);
+    QScrollArea* scrollArea = new QScrollArea( ui->page_4 );
+    scrollArea->setWidgetResizable( true );
+    scrollArea->setFrameShape( QFrame::StyledPanel );
+    scrollArea->setHorizontalScrollBarPolicy( Qt::ScrollBarAlwaysOff );
+    scrollArea->viewport()->setAutoFillBackground( false );
+    scrollArea->viewport()->setAttribute( Qt::WA_StyledBackground, false );
+    m_tabShowcaseWidget = new PageTab( scrollArea );
+    scrollArea->setWidget( m_tabShowcaseWidget );
+    m_tabShowcaseWidget->setAutoFillBackground( false );
     m_tabShowcaseWidget->updateTabIcons();
-    pageLayout->addWidget(scrollArea);
+    pageLayout->addWidget( scrollArea );
 }
 
 //=============================================================================
@@ -1459,48 +1558,48 @@ void MainWindow::setupTabs()
 void MainWindow::setupButtonsAndIcons()
 {
     // 追加胶囊和圆形按钮演示 (从UI文件读取)
-    ui->circleBtn->setIcon(createFluentIcon("\ue713"));
-    ui->circleBtn2->setIcon(createFluentIcon("\ue8c3"));
+    ui->circleBtn->setIcon( createFluentIcon( "\ue713" ) );
+    ui->circleBtn2->setIcon( createFluentIcon( "\ue8c3" ) );
 
     // Setup tool button
-    ui->toolButton->setIcon(createFluentIcon("\ue8c3"));
-    ui->pushButton_10->setText(tr("工具按钮"));
-    ui->pushButton_10->setIcon(createFluentIcon("\ue713"));
+    ui->toolButton->setIcon( createFluentIcon( "\ue8c3" ) );
+    ui->pushButton_10->setText( tr( "工具按钮" ) );
+    ui->pushButton_10->setIcon( createFluentIcon( "\ue713" ) );
 
     // Setup tool button 3 with menu
     setupToolButtonWithMenu();
 
     // Setup tool button 4 with icon and text
-    ui->toolButton_4->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
-    ui->toolButton_4->setText(tr("上下按钮"));
-    ui->toolButton_4->setIcon(createFluentIcon("\uE804"));
+    ui->toolButton_4->setToolButtonStyle( Qt::ToolButtonTextUnderIcon );
+    ui->toolButton_4->setText( tr( "上下按钮" ) );
+    ui->toolButton_4->setIcon( createFluentIcon( "\uE804" ) );
 
     // Setup auto-raise button
-    ui->tBtnAutoRaise->setIcon(createFluentIcon("\ue804"));
+    ui->tBtnAutoRaise->setIcon( createFluentIcon( "\ue804" ) );
 }
 
 void MainWindow::setupToolButtonWithMenu()
 {
-    ui->toolButton_3->setAutoRaise(false);
-    ui->toolButton_3->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
-    ui->toolButton_3->setPopupMode(QToolButton::InstantPopup);
-    ui->toolButton_3->setText(tr("菜单按钮"));
+    ui->toolButton_3->setAutoRaise( false );
+    ui->toolButton_3->setToolButtonStyle( Qt::ToolButtonTextBesideIcon );
+    ui->toolButton_3->setPopupMode( QToolButton::InstantPopup );
+    ui->toolButton_3->setText( tr( "菜单按钮" ) );
 
-    QMenu *menu = new QMenu(ui->toolButton_3);
-    QAction *aNewFile = menu->addAction(createFluentIcon("\ue8a5"), tr("新建文件"));
-    g_actionIconMap[aNewFile] = "\ue8a5";
+    QMenu* menu                 = new QMenu( ui->toolButton_3 );
+    QAction* aNewFile           = menu->addAction( createFluentIcon( "\ue8a5" ), tr( "新建文件" ) );
+    g_actionIconMap[ aNewFile ] = "\ue8a5";
 
-    QAction *aNewProj = menu->addAction(createFluentIcon("\ue8b5"), tr("新建项目"));
-    g_actionIconMap[aNewProj] = "\ue8b5";
+    QAction* aNewProj           = menu->addAction( createFluentIcon( "\ue8b5" ), tr( "新建项目" ) );
+    g_actionIconMap[ aNewProj ] = "\ue8b5";
 
-    QAction *aRecent = menu->addAction(createFluentIcon("\ue8c3"), tr("最近打开"));
-    g_actionIconMap[aRecent] = "\ue8c3";
+    QAction* aRecent           = menu->addAction( createFluentIcon( "\ue8c3" ), tr( "最近打开" ) );
+    g_actionIconMap[ aRecent ] = "\ue8c3";
 
-    QAction *aOpenFile = menu->addAction(createFluentIcon("\ue8a5"), tr("打开文件"));
-    g_actionIconMap[aOpenFile] = "\ue8a5";
+    QAction* aOpenFile           = menu->addAction( createFluentIcon( "\ue8a5" ), tr( "打开文件" ) );
+    g_actionIconMap[ aOpenFile ] = "\ue8a5";
 
-    ui->toolButton_3->setMenu(menu);
-    ui->toolButton_4->setMenu(menu);
+    ui->toolButton_3->setMenu( menu );
+    ui->toolButton_4->setMenu( menu );
 }
 
 //=============================================================================
@@ -1509,271 +1608,282 @@ void MainWindow::setupToolButtonWithMenu()
 
 void MainWindow::setupMdiArea()
 {
-    QMdiArea *mdiArea = new QMdiArea(ui->page_5);
-    mdiArea->setViewMode(QMdiArea::SubWindowView);
-    mdiArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
-    mdiArea->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    QMdiArea* mdiArea = new QMdiArea( ui->page_5 );
+    mdiArea->setViewMode( QMdiArea::SubWindowView );
+    mdiArea->setHorizontalScrollBarPolicy( Qt::ScrollBarAsNeeded );
+    mdiArea->setVerticalScrollBarPolicy( Qt::ScrollBarAsNeeded );
 
     // Add sub-windows
-    for (int i = 0; i < 3; ++i)
+    for ( int i = 0; i < 3; ++i )
     {
-        QMdiSubWindow *subWindow = new QMdiSubWindow();
-        subWindow->setWidget(new QTextEdit());
-        subWindow->setAttribute(Qt::WA_DeleteOnClose);
-        subWindow->setWindowTitle(tr("子窗口 %1").arg(i + 1));
-        mdiArea->addSubWindow(subWindow);
+        QMdiSubWindow* subWindow = new QMdiSubWindow();
+        subWindow->setWidget( new QTextEdit() );
+        subWindow->setAttribute( Qt::WA_DeleteOnClose );
+        subWindow->setWindowTitle( tr( "子窗口 %1" ).arg( i + 1 ) );
+        mdiArea->addSubWindow( subWindow );
         subWindow->show();
     }
 
     // Add view mode switch button
-    QPushButton *switchViewBtn = new QPushButton(tr("切换视图模式"), ui->page_5);
-    switchViewBtn->move(10, 10);
+    QPushButton* switchViewBtn = new QPushButton( tr( "切换视图模式" ), ui->page_5 );
+    switchViewBtn->move( 10, 10 );
     switchViewBtn->raise();
-    connect(switchViewBtn,
-            &QPushButton::clicked,
-            this,
-            [mdiArea]()
-            { mdiArea->setViewMode(mdiArea->viewMode() == QMdiArea::SubWindowView ? QMdiArea::TabbedView : QMdiArea::SubWindowView); });
+    connect( switchViewBtn,
+             &QPushButton::clicked,
+             this,
+             [ mdiArea ]()
+             { mdiArea->setViewMode( mdiArea->viewMode() == QMdiArea::SubWindowView ? QMdiArea::TabbedView : QMdiArea::SubWindowView ); } );
 
-    QVBoxLayout *layout = new QVBoxLayout(ui->page_5);
-    layout->addWidget(switchViewBtn);
-    layout->addWidget(mdiArea);
+    QVBoxLayout* layout = new QVBoxLayout( ui->page_5 );
+    layout->addWidget( switchViewBtn );
+    layout->addWidget( mdiArea );
 }
 
 void MainWindow::setupSegoeIconGalleryPage()
 {
-    if (!ui->stackedWidget)
+    if ( !ui->stackedWidget )
     {
         return;
     }
 
-    PageSegoeIconGallery *galleryWidget = new PageSegoeIconGallery(ui->stackedWidget);
-    galleryWidget->setObjectName(QStringLiteral("pageSegoeIconGallery"));
-    ui->stackedWidget->addWidget(galleryWidget);
+    PageSegoeIconGallery* galleryWidget = new PageSegoeIconGallery( ui->stackedWidget );
+    galleryWidget->setObjectName( QStringLiteral( "pageSegoeIconGallery" ) );
+    ui->stackedWidget->addWidget( galleryWidget );
 }
 
 void MainWindow::setupProgressRingPage()
 {
-    if (!ui->stackedWidget)
+    if ( !ui->stackedWidget )
     {
         return;
     }
 
-    auto *page = new PageProgressRing(ui->stackedWidget);
-    page->setObjectName(QStringLiteral("pageProgressRing"));
-    ui->stackedWidget->addWidget(page);
+    auto* page = new PageProgressRing( ui->stackedWidget );
+    page->setObjectName( QStringLiteral( "pageProgressRing" ) );
+    ui->stackedWidget->addWidget( page );
 }
 
 void MainWindow::setupAboutPage()
 {
-    if (!ui->stackedWidget)
+    if ( !ui->stackedWidget )
     {
         return;
     }
 
-    PageAbout *aboutPage = new PageAbout(ui->stackedWidget);
-    aboutPage->setObjectName(QStringLiteral("pageAboutProject"));
-    ui->stackedWidget->addWidget(aboutPage);
+    PageAbout* aboutPage = new PageAbout( ui->stackedWidget );
+    aboutPage->setObjectName( QStringLiteral( "pageAboutProject" ) );
+    ui->stackedWidget->addWidget( aboutPage );
 }
 
 void MainWindow::setupDialogsPage()
 {
-    if (!ui->stackedWidget)
+    if ( !ui->stackedWidget )
     {
         return;
     }
-    auto *page = new PageDialog(ui->stackedWidget);
-    page->setObjectName(QStringLiteral("pageDialogs"));
-    ui->stackedWidget->addWidget(page);
+    auto* page = new PageDialog( ui->stackedWidget );
+    page->setObjectName( QStringLiteral( "pageDialogs" ) );
+    ui->stackedWidget->addWidget( page );
 }
 
 void MainWindow::setupChangelogTimelinePage()
 {
-    if (!ui->stackedWidget)
+    if ( !ui->stackedWidget )
     {
         return;
     }
-    auto *page = new PageChangelog(ui->stackedWidget);
-    page->setObjectName(QStringLiteral("pageChangelogTimeline"));
-    ui->stackedWidget->addWidget(page);
+    auto* page = new PageChangelog( ui->stackedWidget );
+    page->setObjectName( QStringLiteral( "pageChangelogTimeline" ) );
+    ui->stackedWidget->addWidget( page );
 }
 
 void MainWindow::setupSystemResourcesPage()
 {
-    if (!ui->stackedWidget)
+    if ( !ui->stackedWidget )
     {
         return;
     }
-    auto *page = new PageSystemResources(ui->stackedWidget);
-    page->setObjectName(QStringLiteral("pageSystemResources"));
-    ui->stackedWidget->addWidget(page);
+    auto* page = new PageSystemResources( ui->stackedWidget );
+    page->setObjectName( QStringLiteral( "pageSystemResources" ) );
+    ui->stackedWidget->addWidget( page );
 }
 
 void MainWindow::setupColorPickerPage()
 {
-    if (!ui->stackedWidget)
+    if ( !ui->stackedWidget )
     {
         return;
     }
-    auto *page = new PageColor(ui->stackedWidget);
-    page->setObjectName(QStringLiteral("pageColorPicker"));
-    ui->stackedWidget->addWidget(page);
+    auto* page = new PageColor( ui->stackedWidget );
+    page->setObjectName( QStringLiteral( "pageColorPicker" ) );
+    ui->stackedWidget->addWidget( page );
 }
 
 void MainWindow::setupExWidgetsPages()
 {
-    if (!ui->stackedWidget)
+    if ( !ui->stackedWidget )
     {
         return;
     }
 
-    auto *rangeSliderPage = new PageRangeSlider(ui->stackedWidget);
-    rangeSliderPage->setObjectName(QStringLiteral("pageExRangeSlider"));
-    ui->stackedWidget->addWidget(rangeSliderPage);
+    auto* rangeSliderPage = new PageRangeSlider( ui->stackedWidget );
+    rangeSliderPage->setObjectName( QStringLiteral( "pageExRangeSlider" ) );
+    ui->stackedWidget->addWidget( rangeSliderPage );
 
-    auto *borderBeamPage = new PageBorderBeam(ui->stackedWidget);
-    borderBeamPage->setObjectName(QStringLiteral("pageExBorderBeam"));
-    ui->stackedWidget->addWidget(borderBeamPage);
+    auto* borderBeamPage = new PageBorderBeam( ui->stackedWidget );
+    borderBeamPage->setObjectName( QStringLiteral( "pageExBorderBeam" ) );
+    ui->stackedWidget->addWidget( borderBeamPage );
 
-    auto *audioLevelMeterPage = new PageAudioLevelMeter(ui->stackedWidget);
-    audioLevelMeterPage->setObjectName(QStringLiteral("pageExAudioLevelMeter"));
-    ui->stackedWidget->addWidget(audioLevelMeterPage);
+    auto* audioLevelMeterPage = new PageAudioLevelMeter( ui->stackedWidget );
+    audioLevelMeterPage->setObjectName( QStringLiteral( "pageExAudioLevelMeter" ) );
+    ui->stackedWidget->addWidget( audioLevelMeterPage );
 
-    auto *radialGaugePage = new PageRadialGauge(ui->stackedWidget);
-    radialGaugePage->setObjectName(QStringLiteral("pageExRadialGauge"));
-    ui->stackedWidget->addWidget(radialGaugePage);
+    auto* radialGaugePage = new PageRadialGauge( ui->stackedWidget );
+    radialGaugePage->setObjectName( QStringLiteral( "pageExRadialGauge" ) );
+    ui->stackedWidget->addWidget( radialGaugePage );
 
-    auto *liquidGaugePage = new PageLiquidGauge(ui->stackedWidget);
-    liquidGaugePage->setObjectName(QStringLiteral("pageExLiquidGauge"));
-    ui->stackedWidget->addWidget(liquidGaugePage);
+    auto* liquidGaugePage = new PageLiquidGauge( ui->stackedWidget );
+    liquidGaugePage->setObjectName( QStringLiteral( "pageExLiquidGauge" ) );
+    ui->stackedWidget->addWidget( liquidGaugePage );
 
-    auto *timelinePage = new PageTimeline(ui->stackedWidget);
-    timelinePage->setObjectName(QStringLiteral("pageExTimeline"));
-    ui->stackedWidget->addWidget(timelinePage);
+    auto* timelinePage = new PageTimeline( ui->stackedWidget );
+    timelinePage->setObjectName( QStringLiteral( "pageExTimeline" ) );
+    ui->stackedWidget->addWidget( timelinePage );
 
-    auto *feedbackPage = new PageFeedback(ui->stackedWidget);
-    feedbackPage->setObjectName(QStringLiteral("pageExFeedback"));
-    ui->stackedWidget->addWidget(feedbackPage);
+    auto* feedbackPage = new PageFeedback( ui->stackedWidget );
+    feedbackPage->setObjectName( QStringLiteral( "pageExFeedback" ) );
+    ui->stackedWidget->addWidget( feedbackPage );
 
-    auto *navigationHintPage = new PageNavigationHint(ui->stackedWidget);
-    navigationHintPage->setObjectName(QStringLiteral("pageExNavigationHint"));
-    ui->stackedWidget->addWidget(navigationHintPage);
+    auto* navigationHintPage = new PageNavigationHint( ui->stackedWidget );
+    navigationHintPage->setObjectName( QStringLiteral( "pageExNavigationHint" ) );
+    ui->stackedWidget->addWidget( navigationHintPage );
+
+    auto* carouselPage = new PageCarousel( ui->stackedWidget );
+    carouselPage->setObjectName( QStringLiteral( "pageExCarousel" ) );
+    ui->stackedWidget->addWidget( carouselPage );
 }
 
 void MainWindow::setupAudiomaticPlayerPage()
 {
-    if (!ui->stackedWidget)
+    if ( !ui->stackedWidget )
     {
         return;
     }
 
-    m_audiomaticPlayerPage = new QFrame(ui->stackedWidget);
-    m_audiomaticPlayerPage->setFrameShape(QFrame::StyledPanel);
-    m_audiomaticPlayerPage->setObjectName(QStringLiteral("pageAudiomaticPlayer"));
+    m_audiomaticPlayerPage = new QFrame( ui->stackedWidget );
+    m_audiomaticPlayerPage->setFrameShape( QFrame::StyledPanel );
+    m_audiomaticPlayerPage->setObjectName( QStringLiteral( "pageAudiomaticPlayer" ) );
 
-    auto *pageLayout = new QHBoxLayout(m_audiomaticPlayerPage);
-    pageLayout->setContentsMargins(24, 24, 24, 24);
+    auto* pageLayout = new QHBoxLayout( m_audiomaticPlayerPage );
+    pageLayout->setContentsMargins( 24, 24, 24, 24 );
 
-#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0) && !defined(Q_OS_ANDROID)
-    pageLayout->addWidget(new AudiomaticPlayerWidget(m_audiomaticPlayerPage));
+#if QT_VERSION >= QT_VERSION_CHECK( 6, 0, 0 ) && !defined( Q_OS_ANDROID )
+    pageLayout->addWidget( new AudiomaticPlayerWidget( m_audiomaticPlayerPage ) );
 #else
-    pageLayout->addWidget(new PageSpectrum(m_audiomaticPlayerPage));
+    pageLayout->addWidget( new PageSpectrum( m_audiomaticPlayerPage ) );
 #endif
 
-    ui->stackedWidget->addWidget(m_audiomaticPlayerPage);
+    ui->stackedWidget->addWidget( m_audiomaticPlayerPage );
 }
 
 void MainWindow::addExWidgetsNavigation()
 {
-    if (!m_navView || !ui->stackedWidget)
+    if ( !m_navView || !ui->stackedWidget )
     {
         return;
     }
 
-    QWidget *rangeSliderPage = ui->stackedWidget->findChild<QWidget *>(QStringLiteral("pageExRangeSlider"));
-    const int rangeSliderPageIndex = rangeSliderPage ? ui->stackedWidget->indexOf(rangeSliderPage) : -1;
-    if (rangeSliderPageIndex < 0)
+    QWidget* rangeSliderPage       = ui->stackedWidget->findChild<QWidget*>( QStringLiteral( "pageExRangeSlider" ) );
+    const int rangeSliderPageIndex = rangeSliderPage ? ui->stackedWidget->indexOf( rangeSliderPage ) : -1;
+    if ( rangeSliderPageIndex < 0 )
     {
         return;
     }
 
-    QWidget *colorPickerPage = ui->stackedWidget->findChild<QWidget *>(QStringLiteral("pageColorPicker"));
-    const int colorPickerPageIndex = colorPickerPage ? ui->stackedWidget->indexOf(colorPickerPage) : -1;
-    QWidget *borderBeamPage = ui->stackedWidget->findChild<QWidget *>(QStringLiteral("pageExBorderBeam"));
-    const int borderBeamPageIndex = borderBeamPage ? ui->stackedWidget->indexOf(borderBeamPage) : -1;
-    QWidget *audioLevelMeterPage = ui->stackedWidget->findChild<QWidget *>(QStringLiteral("pageExAudioLevelMeter"));
-    const int audioLevelMeterPageIndex = audioLevelMeterPage ? ui->stackedWidget->indexOf(audioLevelMeterPage) : -1;
-    QWidget *radialGaugePage = ui->stackedWidget->findChild<QWidget *>(QStringLiteral("pageExRadialGauge"));
-    const int radialGaugePageIndex = radialGaugePage ? ui->stackedWidget->indexOf(radialGaugePage) : -1;
-    QWidget *liquidGaugePage = ui->stackedWidget->findChild<QWidget *>(QStringLiteral("pageExLiquidGauge"));
-    const int liquidGaugePageIndex = liquidGaugePage ? ui->stackedWidget->indexOf(liquidGaugePage) : -1;
-    QWidget *progressRingPage = ui->stackedWidget->findChild<QWidget *>(QStringLiteral("pageProgressRing"));
-    const int progressRingPageIndex = progressRingPage ? ui->stackedWidget->indexOf(progressRingPage) : -1;
-    QWidget *timelinePage = ui->stackedWidget->findChild<QWidget *>(QStringLiteral("pageExTimeline"));
-    const int timelinePageIndex = timelinePage ? ui->stackedWidget->indexOf(timelinePage) : -1;
-    QWidget *feedbackPage = ui->stackedWidget->findChild<QWidget *>(QStringLiteral("pageExFeedback"));
-    const int feedbackPageIndex = feedbackPage ? ui->stackedWidget->indexOf(feedbackPage) : -1;
-    QWidget *navigationHintPage = ui->stackedWidget->findChild<QWidget *>(QStringLiteral("pageExNavigationHint"));
-    const int navigationHintPageIndex = navigationHintPage ? ui->stackedWidget->indexOf(navigationHintPage) : -1;
-    const int audiomaticPageIndex = m_audiomaticPlayerPage ? ui->stackedWidget->indexOf(m_audiomaticPlayerPage) : -1;
+    QWidget* colorPickerPage           = ui->stackedWidget->findChild<QWidget*>( QStringLiteral( "pageColorPicker" ) );
+    const int colorPickerPageIndex     = colorPickerPage ? ui->stackedWidget->indexOf( colorPickerPage ) : -1;
+    QWidget* borderBeamPage            = ui->stackedWidget->findChild<QWidget*>( QStringLiteral( "pageExBorderBeam" ) );
+    const int borderBeamPageIndex      = borderBeamPage ? ui->stackedWidget->indexOf( borderBeamPage ) : -1;
+    QWidget* audioLevelMeterPage       = ui->stackedWidget->findChild<QWidget*>( QStringLiteral( "pageExAudioLevelMeter" ) );
+    const int audioLevelMeterPageIndex = audioLevelMeterPage ? ui->stackedWidget->indexOf( audioLevelMeterPage ) : -1;
+    QWidget* radialGaugePage           = ui->stackedWidget->findChild<QWidget*>( QStringLiteral( "pageExRadialGauge" ) );
+    const int radialGaugePageIndex     = radialGaugePage ? ui->stackedWidget->indexOf( radialGaugePage ) : -1;
+    QWidget* liquidGaugePage           = ui->stackedWidget->findChild<QWidget*>( QStringLiteral( "pageExLiquidGauge" ) );
+    const int liquidGaugePageIndex     = liquidGaugePage ? ui->stackedWidget->indexOf( liquidGaugePage ) : -1;
+    QWidget* progressRingPage          = ui->stackedWidget->findChild<QWidget*>( QStringLiteral( "pageProgressRing" ) );
+    const int progressRingPageIndex    = progressRingPage ? ui->stackedWidget->indexOf( progressRingPage ) : -1;
+    QWidget* timelinePage              = ui->stackedWidget->findChild<QWidget*>( QStringLiteral( "pageExTimeline" ) );
+    const int timelinePageIndex        = timelinePage ? ui->stackedWidget->indexOf( timelinePage ) : -1;
+    QWidget* feedbackPage              = ui->stackedWidget->findChild<QWidget*>( QStringLiteral( "pageExFeedback" ) );
+    const int feedbackPageIndex        = feedbackPage ? ui->stackedWidget->indexOf( feedbackPage ) : -1;
+    QWidget* navigationHintPage        = ui->stackedWidget->findChild<QWidget*>( QStringLiteral( "pageExNavigationHint" ) );
+    const int navigationHintPageIndex  = navigationHintPage ? ui->stackedWidget->indexOf( navigationHintPage ) : -1;
+    QWidget* carouselPage              = ui->stackedWidget->findChild<QWidget*>( QStringLiteral( "pageExCarousel" ) );
+    const int carouselPageIndex        = carouselPage ? ui->stackedWidget->indexOf( carouselPage ) : -1;
+    const int audiomaticPageIndex      = m_audiomaticPlayerPage ? ui->stackedWidget->indexOf( m_audiomaticPlayerPage ) : -1;
 
     m_navExWidgetsRoot = new QTreeWidgetItem();
-    m_navView->configureNavigationItem(m_navExWidgetsRoot, tr("ExWidgets"), rangeSliderPageIndex, QStringLiteral("\uE8F1"));
-    m_navView->addTopLevelItem(m_navExWidgetsRoot);
+    m_navView->configureNavigationItem( m_navExWidgetsRoot, tr( "ExWidgets" ), rangeSliderPageIndex, QStringLiteral( "\uE8F1" ) );
+    m_navView->addTopLevelItem( m_navExWidgetsRoot );
 
-    auto addExWidgetItem = [this](const QString &text, int pageIndex, const QString &iconCode = QString()) {
-        auto *item = new QTreeWidgetItem(m_navExWidgetsRoot);
-        m_navView->configureNavigationItem(item, text, pageIndex, iconCode);
+    auto addExWidgetItem = [ this ]( const QString& text, int pageIndex, const QString& iconCode = QString() )
+    {
+        auto* item = new QTreeWidgetItem( m_navExWidgetsRoot );
+        m_navView->configureNavigationItem( item, text, pageIndex, iconCode );
         return item;
     };
 
-    addExWidgetItem(QStringLiteral("ExRangeSlider"), rangeSliderPageIndex);
-    if (borderBeamPageIndex >= 0)
+    addExWidgetItem( tr( "范围滑块" ), rangeSliderPageIndex );
+    if ( borderBeamPageIndex >= 0 )
     {
-        addExWidgetItem(QStringLiteral("ExBorderBeam"), borderBeamPageIndex);
+        addExWidgetItem( tr( "边框光束" ), borderBeamPageIndex );
     }
-    if (audioLevelMeterPageIndex >= 0)
+    if ( audioLevelMeterPageIndex >= 0 )
     {
-        addExWidgetItem(QStringLiteral("ExAudioLevelMeter"), audioLevelMeterPageIndex);
+        addExWidgetItem( tr( "音频电平表" ), audioLevelMeterPageIndex );
     }
-    if (radialGaugePageIndex >= 0)
+    if ( radialGaugePageIndex >= 0 )
     {
-        addExWidgetItem(QStringLiteral("ExRadialGauge"), radialGaugePageIndex);
+        addExWidgetItem( tr( "径向仪表盘" ), radialGaugePageIndex );
     }
-    if (liquidGaugePageIndex >= 0)
+    if ( liquidGaugePageIndex >= 0 )
     {
-        addExWidgetItem(QStringLiteral("ExLiquidGauge"), liquidGaugePageIndex);
+        addExWidgetItem( tr( "水波进度球" ), liquidGaugePageIndex );
     }
-    if (progressRingPageIndex >= 0)
+    if ( progressRingPageIndex >= 0 )
     {
-        addExWidgetItem(QStringLiteral("ExProgressRing"), progressRingPageIndex);
+        addExWidgetItem( tr( "环形进度条" ), progressRingPageIndex );
     }
-    if (timelinePageIndex >= 0)
+    if ( timelinePageIndex >= 0 )
     {
-        addExWidgetItem(QStringLiteral("ExTimeline"), timelinePageIndex);
+        addExWidgetItem( tr( "时间轴" ), timelinePageIndex );
     }
-    if (feedbackPageIndex >= 0)
+    if ( feedbackPageIndex >= 0 )
     {
-        addExWidgetItem(QStringLiteral("ExInfoBar / ExExpander"), feedbackPageIndex);
+        addExWidgetItem( tr( "信息栏 / 折叠卡" ), feedbackPageIndex );
     }
-    if (navigationHintPageIndex >= 0)
+    if ( navigationHintPageIndex >= 0 )
     {
-        addExWidgetItem(QStringLiteral("ExBreadcrumbBar / ExTeachingTip"), navigationHintPageIndex);
+        addExWidgetItem( tr( "面包屑 / 操作提示" ), navigationHintPageIndex );
     }
-    if (colorPickerPageIndex >= 0)
+    if ( carouselPageIndex >= 0 )
     {
-        addExWidgetItem(QStringLiteral("ExColorPicker"), colorPickerPageIndex, QStringLiteral("\uE790"));
+        addExWidgetItem( tr( "轮播图" ), carouselPageIndex, QStringLiteral( "\uE91B" ) );
     }
-    if (audiomaticPageIndex >= 0)
+    if ( colorPickerPageIndex >= 0 )
     {
-#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
-        addExWidgetItem(tr("Audiomatic Mini"), audiomaticPageIndex, QStringLiteral("\uE8D6"));
+        addExWidgetItem( tr( "颜色选择器" ), colorPickerPageIndex, QStringLiteral( "\uE790" ) );
+    }
+    if ( audiomaticPageIndex >= 0 )
+    {
+#if QT_VERSION >= QT_VERSION_CHECK( 6, 0, 0 )
+        addExWidgetItem( tr( "音乐播放器" ), audiomaticPageIndex, QStringLiteral( "\uE8D6" ) );
 #else
-        addExWidgetItem(QStringLiteral("ExSpectrumWidget"), audiomaticPageIndex, QStringLiteral("\uE8D6"));
+        addExWidgetItem( tr( "音频频谱" ), audiomaticPageIndex, QStringLiteral( "\uE8D6" ) );
 #endif
     }
 
-    m_navExWidgetsRoot->setExpanded(true);
+    m_navExWidgetsRoot->setExpanded( true );
 }
 
 //=============================================================================
@@ -1783,13 +1893,13 @@ void MainWindow::addExWidgetsNavigation()
 void MainWindow::updateActionIcons()
 {
     // Update search icon
-    if (m_searchAction)
+    if ( m_searchAction )
     {
-        ui->lineEditSerach->removeAction(m_searchAction);
+        ui->lineEditSerach->removeAction( m_searchAction );
     }
-    m_searchAction = ui->lineEditSerach->addAction(createFluentIcon("\ue721"), QLineEdit::TrailingPosition);
+    m_searchAction = ui->lineEditSerach->addAction( createFluentIcon( "\ue721" ), QLineEdit::TrailingPosition );
 
-    if (m_tabShowcaseWidget)
+    if ( m_tabShowcaseWidget )
     {
         m_tabShowcaseWidget->updateTabIcons();
     }
@@ -1809,216 +1919,214 @@ void MainWindow::updateActionIcons()
 
 void MainWindow::updateButtonIcons()
 {
-    ui->toolButton->setIcon(createFluentIcon("\ue8c3"));
-    ui->pushButton_10->setIcon(createFluentIcon("\ue713"));
-    ui->toolButton_4->setIcon(createFluentIcon("\uE804"));
-    ui->tBtnAutoRaise->setIcon(createFluentIcon("\ue804"));
-    ui->circleBtn->setIcon(createFluentIcon("\ue713"));
-    ui->circleBtn2->setIcon(createFluentIcon("\ue8c3"));
+    ui->toolButton->setIcon( createFluentIcon( "\ue8c3" ) );
+    ui->pushButton_10->setIcon( createFluentIcon( "\ue713" ) );
+    ui->toolButton_4->setIcon( createFluentIcon( "\uE804" ) );
+    ui->tBtnAutoRaise->setIcon( createFluentIcon( "\ue804" ) );
+    ui->circleBtn->setIcon( createFluentIcon( "\ue713" ) );
+    ui->circleBtn2->setIcon( createFluentIcon( "\ue8c3" ) );
 }
 
 void MainWindow::updateMenuActionIcons()
 {
-    for (auto it = g_actionIconMap.begin(); it != g_actionIconMap.end(); ++it)
+    for ( auto it = g_actionIconMap.begin(); it != g_actionIconMap.end(); ++it )
     {
-        QAction *action = it.key();
+        QAction* action        = it.key();
         const QString iconCode = it.value();
-        if (action)
+        if ( action )
         {
-            action->setIcon(createFluentIcon(iconCode));
+            action->setIcon( createFluentIcon( iconCode ) );
         }
     }
 }
 
 void MainWindow::updateMenuIcons()
 {
-    for (auto it = g_menuIconMap.begin(); it != g_menuIconMap.end(); ++it)
+    for ( auto it = g_menuIconMap.begin(); it != g_menuIconMap.end(); ++it )
     {
-        QMenu *menu = it.key();
+        QMenu* menu            = it.key();
         const QString iconCode = it.value();
-        if (menu)
+        if ( menu )
         {
-            menu->setIcon(createFluentIcon(iconCode));
+            menu->setIcon( createFluentIcon( iconCode ) );
         }
     }
 }
 
 void MainWindow::updateNavigationItemIcons()
 {
-    if (!m_navView)
+    if ( !m_navView )
     {
         return;
     }
 
-    std::function<void(QTreeWidgetItem *)> updateItemIcon = [&](QTreeWidgetItem *item)
+    std::function<void( QTreeWidgetItem* )> updateItemIcon = [ & ]( QTreeWidgetItem* item )
     {
-        if (!item)
+        if ( !item )
         {
             return;
         }
-        const QString iconCode = item->data(0, Qt::UserRole + 1).toString();
-        if (!iconCode.isEmpty())
+        const QString iconCode = item->data( 0, Qt::UserRole + 1 ).toString();
+        if ( !iconCode.isEmpty() )
         {
-            item->setIcon(0, createFluentIcon(iconCode));
+            item->setIcon( 0, createFluentIcon( iconCode ) );
         }
-        for (int i = 0; i < item->childCount(); ++i)
+        for ( int i = 0; i < item->childCount(); ++i )
         {
-            updateItemIcon(item->child(i));
+            updateItemIcon( item->child( i ) );
         }
     };
 
-    for (int i = 0; i < m_navView->topLevelItemCount(); ++i)
+    for ( int i = 0; i < m_navView->topLevelItemCount(); ++i )
     {
-        updateItemIcon(m_navView->topLevelItem(i));
+        updateItemIcon( m_navView->topLevelItem( i ) );
     }
 }
 
 void MainWindow::loadChangelog()
 {
     ui->log->clear();
-    QFile file(":/changelog.txt");
-    if (file.open(QIODevice::ReadOnly | QIODevice::Text))
+    QFile file( ":/changelog.txt" );
+    if ( file.open( QIODevice::ReadOnly | QIODevice::Text ) )
     {
-        QTextStream in(&file);
-#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
-        in.setCodec("UTF-8");
+        QTextStream in( &file );
+#if QT_VERSION < QT_VERSION_CHECK( 6, 0, 0 )
+        in.setCodec( "UTF-8" );
 #endif
         const QString content = in.readAll();
         file.close();
-        const QStringList lines = content.split("\n");
-        for (const QString &line : std::as_const(lines))
+        const QStringList lines = content.split( "\n" );
+        for ( const QString& line : std::as_const( lines ) )
         {
-            ui->log->append(line);
+            ui->log->append( line );
         }
     }
     else
     {
-        ui->log->append(tr("无法打开changelog.txt, %1").arg(file.errorString()));
+        ui->log->append( tr( "无法打开changelog.txt, %1" ).arg( file.errorString() ) );
     }
 
-    ui->log->moveCursor(QTextCursor::Start);
+    ui->log->moveCursor( QTextCursor::Start );
 }
 
-void MainWindow::on_checkBox_4_clicked(bool checked)
+void MainWindow::on_checkBox_4_clicked( bool checked )
 {
-    QList<QCheckBox *> checkBoxList;
+    QList<QCheckBox*> checkBoxList;
     checkBoxList << ui->checkBox_5;
-    for (QCheckBox *checkBox : std::as_const(checkBoxList))
+    for ( QCheckBox* checkBox : std::as_const( checkBoxList ) )
     {
-        checkBox->setChecked(checked);
+        checkBox->setChecked( checked );
     }
 }
 
-void MainWindow::on_checkBox_5_stateChanged(int state)
-{
-    ui->checkBox_5->setText(state == Qt::Checked ? tr("On") : tr("Off"));
-}
+void MainWindow::on_checkBox_5_stateChanged( int state )
+{ ui->checkBox_5->setText( state == Qt::Checked ? tr( "On" ) : tr( "Off" ) ); }
 
 void MainWindow::on_radioButton_7_clicked()
 {
-    ui->spinBox->setProperty("spinBoxButtonLayout", ArrowsVertical);
-    ui->spinBox->setFrame(ui->spinBox->hasFrame());
+    ui->spinBox->setProperty( "spinBoxButtonLayout", ArrowsVertical );
+    ui->spinBox->setFrame( ui->spinBox->hasFrame() );
 }
 
 void MainWindow::on_radioButton_4_clicked()
 {
-    ui->spinBox->setProperty("spinBoxButtonLayout", ArrowsHorizontalSides);
-    ui->spinBox->setFrame(ui->spinBox->hasFrame());
+    ui->spinBox->setProperty( "spinBoxButtonLayout", ArrowsHorizontalSides );
+    ui->spinBox->setFrame( ui->spinBox->hasFrame() );
 }
 
 void MainWindow::on_radioButton_5_clicked()
 {
-    ui->spinBox->setProperty("spinBoxButtonLayout", ArrowsHorizontalRight);
-    ui->spinBox->setFrame(ui->spinBox->hasFrame());
+    ui->spinBox->setProperty( "spinBoxButtonLayout", ArrowsHorizontalRight );
+    ui->spinBox->setFrame( ui->spinBox->hasFrame() );
 }
 
 void MainWindow::on_radioButton_6_clicked()
 {
-    ui->spinBox->setProperty("spinBoxButtonLayout", PlusMinusHorizontalSides);
-    ui->spinBox->setFrame(ui->spinBox->hasFrame());
+    ui->spinBox->setProperty( "spinBoxButtonLayout", PlusMinusHorizontalSides );
+    ui->spinBox->setFrame( ui->spinBox->hasFrame() );
 }
 
 //=============================================================================
 // Standard Menu Icons
 //=============================================================================
 
-void applyStandardMenuIcons(QMenu *menu, QWidget *widget)
+void applyStandardMenuIcons( QMenu* menu, QWidget* widget )
 {
-    if (!menu)
+    if ( !menu )
     {
         return;
     }
 
-    const QColor iconColor = widget ? widget->palette().color(QPalette::Text) : QApplication::palette().color(QPalette::Text);
-    Q_UNUSED(iconColor);
+    const QColor iconColor = widget ? widget->palette().color( QPalette::Text ) : QApplication::palette().color( QPalette::Text );
+    Q_UNUSED( iconColor );
 
     // Segoe Fluent glyph definitions
-    constexpr QChar GLYPH_UNDO(0xE7A7);
-    constexpr QChar GLYPH_REDO(0xE7A6);
-    constexpr QChar GLYPH_CUT(0xE8C6);
-    constexpr QChar GLYPH_COPY(0xE8C8);
-    constexpr QChar GLYPH_PASTE(0xE77F);
-    constexpr QChar GLYPH_SELECT_ALL(0xE8B3);
-    constexpr QChar GLYPH_DELETE(0xE74D);
-    constexpr QChar GLYPH_UP(0xE70E);
-    constexpr QChar GLYPH_DOWN(0xE70D);
+    constexpr QChar GLYPH_UNDO( 0xE7A7 );
+    constexpr QChar GLYPH_REDO( 0xE7A6 );
+    constexpr QChar GLYPH_CUT( 0xE8C6 );
+    constexpr QChar GLYPH_COPY( 0xE8C8 );
+    constexpr QChar GLYPH_PASTE( 0xE77F );
+    constexpr QChar GLYPH_SELECT_ALL( 0xE8B3 );
+    constexpr QChar GLYPH_DELETE( 0xE74D );
+    constexpr QChar GLYPH_UP( 0xE70E );
+    constexpr QChar GLYPH_DOWN( 0xE70D );
 
-    const QList<QAction *> actions = menu->actions();
-    for (QAction *action : actions)
+    const QList<QAction*> actions = menu->actions();
+    for ( QAction* action : actions )
     {
-        if (!action || action->isSeparator())
+        if ( !action || action->isSeparator() )
         {
             continue;
         }
 
-        if (QMenu *subMenu = action->menu())
+        if ( QMenu* subMenu = action->menu() )
         {
-            applyStandardMenuIcons(subMenu, widget);
+            applyStandardMenuIcons( subMenu, widget );
             continue;
         }
 
-        if (!action->icon().isNull())
+        if ( !action->icon().isNull() )
         {
             continue;
         }
 
-        const QString text = action->text().remove('&').toLower();
+        const QString text = action->text().remove( '&' ).toLower();
 
-        if (text.contains("undo"))
+        if ( text.contains( "undo" ) )
         {
-            action->setIcon(createFluentIcon(GLYPH_UNDO));
+            action->setIcon( createFluentIcon( GLYPH_UNDO ) );
         }
-        else if (text.contains("redo"))
+        else if ( text.contains( "redo" ) )
         {
-            action->setIcon(createFluentIcon(GLYPH_REDO));
+            action->setIcon( createFluentIcon( GLYPH_REDO ) );
         }
-        else if (text.contains("cut"))
+        else if ( text.contains( "cut" ) )
         {
-            action->setIcon(createFluentIcon(GLYPH_CUT));
+            action->setIcon( createFluentIcon( GLYPH_CUT ) );
         }
-        else if (text.contains("copy"))
+        else if ( text.contains( "copy" ) )
         {
-            action->setIcon(createFluentIcon(GLYPH_COPY));
+            action->setIcon( createFluentIcon( GLYPH_COPY ) );
         }
-        else if (text.contains("paste"))
+        else if ( text.contains( "paste" ) )
         {
-            action->setIcon(createFluentIcon(GLYPH_PASTE));
+            action->setIcon( createFluentIcon( GLYPH_PASTE ) );
         }
-        else if (text.contains("select all") || text.contains("selectall"))
+        else if ( text.contains( "select all" ) || text.contains( "selectall" ) )
         {
-            action->setIcon(createFluentIcon(GLYPH_SELECT_ALL));
+            action->setIcon( createFluentIcon( GLYPH_SELECT_ALL ) );
         }
-        else if (text.contains("delete") || text.contains("clear"))
+        else if ( text.contains( "delete" ) || text.contains( "clear" ) )
         {
-            action->setIcon(createFluentIcon(GLYPH_DELETE));
+            action->setIcon( createFluentIcon( GLYPH_DELETE ) );
         }
-        else if (text.contains("step up"))
+        else if ( text.contains( "step up" ) )
         {
-            action->setIcon(createFluentIcon(GLYPH_UP));
+            action->setIcon( createFluentIcon( GLYPH_UP ) );
         }
-        else if (text.contains("step down"))
+        else if ( text.contains( "step down" ) )
         {
-            action->setIcon(createFluentIcon(GLYPH_DOWN));
+            action->setIcon( createFluentIcon( GLYPH_DOWN ) );
         }
     }
 }
@@ -2028,230 +2136,226 @@ void applyStandardMenuIcons(QMenu *menu, QWidget *widget)
 //=============================================================================
 
 #ifndef __MINGW32__
-void QLineEdit::contextMenuEvent(QContextMenuEvent *event)
+void QLineEdit::contextMenuEvent( QContextMenuEvent* event )
 {
-    if (QMenu *menu = createStandardContextMenu())
+    if ( QMenu* menu = createStandardContextMenu() )
     {
-        applyStandardMenuIcons(menu, this);
-        menu->setAttribute(Qt::WA_DeleteOnClose);
-        menu->exec(event->globalPos());
+        applyStandardMenuIcons( menu, this );
+        menu->setAttribute( Qt::WA_DeleteOnClose );
+        menu->exec( event->globalPos() );
     }
 }
 
-void QTextEdit::contextMenuEvent(QContextMenuEvent *event)
+void QTextEdit::contextMenuEvent( QContextMenuEvent* event )
 {
-    if (QMenu *menu = createStandardContextMenu())
+    if ( QMenu* menu = createStandardContextMenu() )
     {
-        applyStandardMenuIcons(menu, this);
-        menu->setAttribute(Qt::WA_DeleteOnClose);
-        menu->exec(event->globalPos());
+        applyStandardMenuIcons( menu, this );
+        menu->setAttribute( Qt::WA_DeleteOnClose );
+        menu->exec( event->globalPos() );
     }
 }
 
-void QComboBox::contextMenuEvent(QContextMenuEvent *event)
+void QComboBox::contextMenuEvent( QContextMenuEvent* event )
 {
-    if (lineEdit())
+    if ( lineEdit() )
     {
-        if (QMenu *menu = lineEdit()->createStandardContextMenu())
+        if ( QMenu* menu = lineEdit()->createStandardContextMenu() )
         {
-            applyStandardMenuIcons(menu, lineEdit());
-            menu->setAttribute(Qt::WA_DeleteOnClose);
-            menu->exec(event->globalPos());
+            applyStandardMenuIcons( menu, lineEdit() );
+            menu->setAttribute( Qt::WA_DeleteOnClose );
+            menu->exec( event->globalPos() );
         }
     }
 }
 
-void QAbstractSpinBox::contextMenuEvent(QContextMenuEvent *event)
+void QAbstractSpinBox::contextMenuEvent( QContextMenuEvent* event )
 {
-    QLineEdit *edit = findChild<QLineEdit *>();
-    if (!edit)
+    QLineEdit* edit = findChild<QLineEdit*>();
+    if ( !edit )
     {
         return;
     }
 
     QPointer<QMenu> menu = edit->createStandardContextMenu();
-    if (!menu)
+    if ( !menu )
     {
         return;
     }
 
     menu->addSeparator();
 
-    const uint se = stepEnabled();
-    QAction *stepUpAction = menu->addAction(tr("&Step up"));
-    stepUpAction->setEnabled(se & StepUpEnabled);
-    QAction *stepDownAction = menu->addAction(tr("Step &down"));
-    stepDownAction->setEnabled(se & StepDownEnabled);
+    const uint se         = stepEnabled();
+    QAction* stepUpAction = menu->addAction( tr( "&Step up" ) );
+    stepUpAction->setEnabled( se & StepUpEnabled );
+    QAction* stepDownAction = menu->addAction( tr( "Step &down" ) );
+    stepDownAction->setEnabled( se & StepDownEnabled );
 
-    applyStandardMenuIcons(menu, this);
+    applyStandardMenuIcons( menu, this );
 
-    const QPointer<QAbstractSpinBox> spinBox(this);
-    const QPoint pos = (event->reason() == QContextMenuEvent::Mouse)
-                           ? event->globalPos()
-                           : mapToGlobal(QPoint(event->pos().x(), 0)) + QPoint(width() / 2, height() / 2);
-    const QAction *action = menu->exec(pos);
-    delete static_cast<QMenu *>(menu);
-    if (spinBox && action)
+    const QPointer<QAbstractSpinBox> spinBox( this );
+    const QPoint pos      = ( event->reason() == QContextMenuEvent::Mouse )
+                                ? event->globalPos()
+                                : mapToGlobal( QPoint( event->pos().x(), 0 ) ) + QPoint( width() / 2, height() / 2 );
+    const QAction* action = menu->exec( pos );
+    delete static_cast<QMenu*>( menu );
+    if ( spinBox && action )
     {
-        if (action == stepUpAction)
+        if ( action == stepUpAction )
         {
-            stepBy(1);
+            stepBy( 1 );
         }
-        else if (action == stepDownAction)
+        else if ( action == stepDownAction )
         {
-            stepBy(-1);
+            stepBy( -1 );
         }
     }
     event->accept();
 }
 #endif
 
-void MainWindow::on_rBLightTheme_clicked(bool checked)
+void MainWindow::on_rBLightTheme_clicked( bool checked )
 {
-    Q_UNUSED(checked)
-    if (themeComboBox)
+    Q_UNUSED( checked )
+    if ( themeComboBox )
     {
-        themeComboBox->setCurrentIndex(0);
+        themeComboBox->setCurrentIndex( 0 );
     }
 }
 
-void MainWindow::on_rBDarkTheme_clicked(bool checked)
+void MainWindow::on_rBDarkTheme_clicked( bool checked )
 {
-    Q_UNUSED(checked)
-    if (themeComboBox)
+    Q_UNUSED( checked )
+    if ( themeComboBox )
     {
-        themeComboBox->setCurrentIndex(1);
+        themeComboBox->setCurrentIndex( 1 );
     }
 }
 
-void MainWindow::on_rBWidgtModeNormal_clicked(bool checked)
+void MainWindow::on_rBWidgtModeNormal_clicked( bool checked )
 {
-    Q_UNUSED(checked)
-    m_tabBarWidgetBg->setCurrentIndex(0);
+    Q_UNUSED( checked )
+    m_tabBarWidgetBg->setCurrentIndex( 0 );
 }
 
-void MainWindow::on_rBWidgetModePixmap_clicked(bool checked)
+void MainWindow::on_rBWidgetModePixmap_clicked( bool checked )
 {
-    Q_UNUSED(checked)
-    m_tabBarWidgetBg->setCurrentIndex(1);
+    Q_UNUSED( checked )
+    m_tabBarWidgetBg->setCurrentIndex( 1 );
 }
 
-void MainWindow::on_rBWidgetModeDwmBlur_clicked(bool checked)
+void MainWindow::on_rBWidgetModeDwmBlur_clicked( bool checked )
 {
-    Q_UNUSED(checked)
-    m_tabBarWidgetBg->setCurrentIndex(2);
+    Q_UNUSED( checked )
+    m_tabBarWidgetBg->setCurrentIndex( 2 );
 }
 
-void MainWindow::on_rBOnlyIcon_clicked(bool checked)
+void MainWindow::on_rBOnlyIcon_clicked( bool checked )
 {
-    Q_UNUSED(checked)
-    if (m_winUINavigationView)
-        m_winUINavigationView->setNavigationExpanded(false);
+    Q_UNUSED( checked )
+    if ( m_winUINavigationView )
+    {
+        m_winUINavigationView->setNavigationExpanded( false );
+    }
 }
 
-void MainWindow::on_rBIconAndText_clicked(bool checked)
+void MainWindow::on_rBIconAndText_clicked( bool checked )
 {
-    Q_UNUSED(checked)
-    if (m_winUINavigationView)
-        m_winUINavigationView->setNavigationExpanded(true);
+    Q_UNUSED( checked )
+    if ( m_winUINavigationView )
+    {
+        m_winUINavigationView->setNavigationExpanded( true );
+    }
 }
 
 #ifdef GALLERY_ENABLE_I18N
-void MainWindow::on_rBLangZh_CN_clicked(bool checked)
+void MainWindow::on_rBLangZh_CN_clicked( bool checked )
 {
-    if (!checked)
+    if ( !checked )
     {
         return;
     }
-    AppLanguage::saveUiLanguage(AppUiLanguage::Zh_CN);
+    AppLanguage::saveUiLanguage( AppUiLanguage::Zh_CN );
     syncLanguageRadios();
     promptRestartAfterLanguageChange();
 }
 
-void MainWindow::on_rBLangEn_US_clicked(bool checked)
+void MainWindow::on_rBLangEn_US_clicked( bool checked )
 {
-    if (!checked)
+    if ( !checked )
     {
         return;
     }
-    AppLanguage::saveUiLanguage(AppUiLanguage::En_US);
+    AppLanguage::saveUiLanguage( AppUiLanguage::En_US );
     syncLanguageRadios();
     promptRestartAfterLanguageChange();
 }
 
-void MainWindow::on_rBLangSystem_clicked(bool checked)
+void MainWindow::on_rBLangSystem_clicked( bool checked )
 {
-    if (!checked)
+    if ( !checked )
     {
         return;
     }
-    AppLanguage::saveUiLanguage(AppUiLanguage::FollowSystem);
+    AppLanguage::saveUiLanguage( AppUiLanguage::FollowSystem );
     syncLanguageRadios();
     promptRestartAfterLanguageChange();
 }
 
 void MainWindow::promptRestartAfterLanguageChange()
 {
-    ExMessageBox box(this);
-    box.setIcon(QMessageBox::Information);
-    box.setWindowTitle(tr("界面语言"));
-    box.setText(tr("语言已保存。是否立即重启应用程序？"));
-    QAbstractButton *restartBtn = box.addButton(tr("立即重启"), QMessageBox::AcceptRole);
-    restartBtn->setProperty("accent", true);
-    box.addButton(tr("稍后"), QMessageBox::RejectRole);
-    box.setDefaultButton(qobject_cast<QPushButton *>(restartBtn));
+    ExMessageBox box( this );
+    box.setIcon( QMessageBox::Information );
+    box.setWindowTitle( tr( "界面语言" ) );
+    box.setText( tr( "语言已保存。是否立即重启应用程序？" ) );
+    QAbstractButton* restartBtn = box.addButton( tr( "立即重启" ), QMessageBox::AcceptRole );
+    restartBtn->setProperty( "accent", true );
+    box.addButton( tr( "稍后" ), QMessageBox::RejectRole );
+    box.setDefaultButton( qobject_cast<QPushButton*>( restartBtn ) );
     box.exec();
-    if (box.clickedButton() == restartBtn)
+    if ( box.clickedButton() == restartBtn )
     {
-        if (!AppLanguage::restartApplication())
+        if ( !AppLanguage::restartApplication() )
         {
-            ExMessageBox::warning(this, tr("界面语言"), tr("无法重新启动应用程序，请手动关闭后再次打开。"));
+            ExMessageBox::warning( this, tr( "界面语言" ), tr( "无法重新启动应用程序，请手动关闭后再次打开。" ) );
         }
     }
 }
 
 void MainWindow::syncLanguageRadios()
 {
-    if (!ui->rBLangZh_CN || !ui->rBLangEn_US || !ui->rBLangSystem)
+    if ( !ui->rBLangZh_CN || !ui->rBLangEn_US || !ui->rBLangSystem )
     {
         return;
     }
     const AppUiLanguage pref = AppLanguage::savedUiLanguage();
-    ui->rBLangZh_CN->blockSignals(true);
-    ui->rBLangEn_US->blockSignals(true);
-    ui->rBLangSystem->blockSignals(true);
-    ui->rBLangZh_CN->setChecked(pref == AppUiLanguage::Zh_CN);
-    ui->rBLangEn_US->setChecked(pref == AppUiLanguage::En_US);
-    ui->rBLangSystem->setChecked(pref == AppUiLanguage::FollowSystem);
-    ui->rBLangZh_CN->blockSignals(false);
-    ui->rBLangEn_US->blockSignals(false);
-    ui->rBLangSystem->blockSignals(false);
+    ui->rBLangZh_CN->blockSignals( true );
+    ui->rBLangEn_US->blockSignals( true );
+    ui->rBLangSystem->blockSignals( true );
+    ui->rBLangZh_CN->setChecked( pref == AppUiLanguage::Zh_CN );
+    ui->rBLangEn_US->setChecked( pref == AppUiLanguage::En_US );
+    ui->rBLangSystem->setChecked( pref == AppUiLanguage::FollowSystem );
+    ui->rBLangZh_CN->blockSignals( false );
+    ui->rBLangEn_US->blockSignals( false );
+    ui->rBLangSystem->blockSignals( false );
 
-    if ( auto* languageCombo = ui->pageSetting->findChild<QComboBox*>(
-             QStringLiteral( "settingsLanguageCombo" ) ) )
+    if ( auto* languageCombo = ui->pageSetting->findChild<QComboBox*>( QStringLiteral( "settingsLanguageCombo" ) ) )
     {
         const QSignalBlocker blocker( languageCombo );
-        languageCombo->setCurrentIndex( pref == AppUiLanguage::Zh_CN ? 0
-                                       : pref == AppUiLanguage::En_US ? 1 : 2 );
+        languageCombo->setCurrentIndex( pref == AppUiLanguage::Zh_CN ? 0 : pref == AppUiLanguage::En_US ? 1 : 2 );
     }
 }
 
 #else
 
-void MainWindow::on_rBLangZh_CN_clicked(bool checked)
-{
-    Q_UNUSED(checked);
-}
+void MainWindow::on_rBLangZh_CN_clicked( bool checked )
+{ Q_UNUSED( checked ); }
 
-void MainWindow::on_rBLangEn_US_clicked(bool checked)
-{
-    Q_UNUSED(checked);
-}
+void MainWindow::on_rBLangEn_US_clicked( bool checked )
+{ Q_UNUSED( checked ); }
 
-void MainWindow::on_rBLangSystem_clicked(bool checked)
-{
-    Q_UNUSED(checked);
-}
+void MainWindow::on_rBLangSystem_clicked( bool checked )
+{ Q_UNUSED( checked ); }
 
 void MainWindow::promptRestartAfterLanguageChange()
 {
@@ -2265,105 +2369,110 @@ void MainWindow::syncLanguageRadios()
 
 void MainWindow::setupAccentColorWidget()
 {
-    if (ui->widgetAccentColor->layout())
+    if ( ui->widgetAccentColor->layout() )
     {
         delete ui->widgetAccentColor->layout();
     }
-    QHBoxLayout *layout = new QHBoxLayout(ui->widgetAccentColor);
-    layout->setContentsMargins(0, 0, 0, 0);
+    QHBoxLayout* layout = new QHBoxLayout( ui->widgetAccentColor );
+    layout->setContentsMargins( 0, 0, 0, 0 );
 
     QList<QColor> colors = {
-        QColor(),          // Default (represented by invalid QColor)
-        QColor("#FFB900"), // Yellow
-        QColor("#FF8C00"), // Orange
-        QColor("#E81123"), // Red
-        QColor("#E3008C"), // Magenta
-        QColor("#881798"), // Purple
-        QColor("#0078D4"), // Blue
-        QColor("#00B7C3"), // Teal
-        QColor("#107C10")  // Green
+        QColor(),             // Default (represented by invalid QColor)
+        QColor( "#FFB900" ),  // Yellow
+        QColor( "#FF8C00" ),  // Orange
+        QColor( "#E81123" ),  // Red
+        QColor( "#E3008C" ),  // Magenta
+        QColor( "#881798" ),  // Purple
+        QColor( "#0078D4" ),  // Blue
+        QColor( "#00B7C3" ),  // Teal
+        QColor( "#107C10" )   // Green
     };
 
-    QFont iconFont("Segoe Fluent Icons");
-    iconFont.setPixelSize(20);
+    QFont iconFont( "Segoe Fluent Icons" );
+    iconFont.setPixelSize( 20 );
 
-    QButtonGroup *btnGroup = new QButtonGroup(this);
-    btnGroup->setExclusive(true);
+    QButtonGroup* btnGroup = new QButtonGroup( this );
+    btnGroup->setExclusive( true );
 
-    for (int i = 0; i < colors.size(); ++i)
+    for ( int i = 0; i < colors.size(); ++i )
     {
-        QColor color = colors[i];
-        QPushButton *btn = new QPushButton(ui->widgetAccentColor);
-        btn->setFixedSize(40, 40);
-        btn->setCheckable(true);
-        btn->setFont(iconFont);
-        btnGroup->addButton(btn, i);
+        QColor color     = colors[ i ];
+        QPushButton* btn = new QPushButton( ui->widgetAccentColor );
+        btn->setFixedSize( 40, 40 );
+        btn->setCheckable( true );
+        btn->setFont( iconFont );
+        btnGroup->addButton( btn, i );
 
-        QColor bgColor = color.isValid() ? color : QColor("#0078D4");
-        QString style = QString(
-                            "QPushButton {"
-                            "   background-color: %1;"
-                            "   border: 1px solid rgba(0, 0, 0, 0.1);"
-                            "   border-radius: 4px;"
-                            "}"
-                            "QPushButton:hover {"
-                            "   background-color: %2;"
-                            "}"
-                            "QPushButton:pressed {"
-                            "   background-color: %3;"
-                            "}")
-                            .arg(bgColor.name())
-                            .arg(bgColor.lighter(110).name())
-                            .arg(bgColor.darker(110).name());
+        QColor bgColor = color.isValid() ? color : QColor( "#0078D4" );
+        QString style  = QString( "QPushButton {"
+                                  "   background-color: %1;"
+                                  "   border: 1px solid rgba(0, 0, 0, 0.1);"
+                                  "   border-radius: 4px;"
+                                  "}"
+                                  "QPushButton:hover {"
+                                  "   background-color: %2;"
+                                  "}"
+                                  "QPushButton:pressed {"
+                                  "   background-color: %3;"
+                                  "}" )
+                             .arg( bgColor.name() )
+                             .arg( bgColor.lighter( 110 ).name() )
+                             .arg( bgColor.darker( 110 ).name() );
 
-        btn->setStyleSheet(style);
+        btn->setStyleSheet( style );
 
-        if (!color.isValid())
+        if ( !color.isValid() )
         {
-            btn->setToolTip(tr("恢复默认"));
+            btn->setToolTip( tr( "恢复默认" ) );
         }
         else
         {
-            btn->setToolTip(color.name());
+            btn->setToolTip( color.name() );
         }
-        layout->addWidget(btn);
+        layout->addWidget( btn );
     }
-    layout->addSpacerItem(new QSpacerItem(1, 1, QSizePolicy::Expanding, QSizePolicy::Preferred));
+    layout->addSpacerItem( new QSpacerItem( 1, 1, QSizePolicy::Expanding, QSizePolicy::Preferred ) );
 
-#if QT_VERSION <= QT_VERSION_CHECK(5,15,2)
-    connect(btnGroup, static_cast<void(QButtonGroup::*)(int)>(&QButtonGroup::buttonClicked), this, [=](int id)
+#if QT_VERSION <= QT_VERSION_CHECK( 5, 15, 2 )
+    connect( btnGroup,
+             static_cast<void ( QButtonGroup::* )( int )>( &QButtonGroup::buttonClicked ),
+             this,
+             [ = ]( int id )
 #else
-    connect(btnGroup, &QButtonGroup::idClicked, this, [=](int id)
+    connect( btnGroup,
+             &QButtonGroup::idClicked,
+             this,
+             [ = ]( int id )
 #endif
-            {
-                for (QAbstractButton *b : btnGroup->buttons())
-                {
-                    b->setText("");
-                }
+             {
+                 for ( QAbstractButton* b : btnGroup->buttons() )
+                 {
+                     b->setText( "" );
+                 }
 
-                QAbstractButton *clickedBtn = btnGroup->button(id);
-                if (clickedBtn)
-                {
-                    clickedBtn->setText(QString::fromUtf16(u"\uE73E"));
-                }
+                 QAbstractButton* clickedBtn = btnGroup->button( id );
+                 if ( clickedBtn )
+                 {
+                     clickedBtn->setText( QString::fromUtf16( u"\uE73E" ) );
+                 }
 
-                QColor color = colors[id];
-                if (color.isValid())
-                {
-                    qApp->setProperty("_q_accent_color", color);
-                }
-                else
-                {
-                    qApp->setProperty("_q_accent_color", QVariant());
-                }
-                refreshFluentStyle();
-            });
+                 QColor color = colors[ id ];
+                 if ( color.isValid() )
+                 {
+                     qApp->setProperty( "_q_accent_color", color );
+                 }
+                 else
+                 {
+                     qApp->setProperty( "_q_accent_color", QVariant() );
+                 }
+                 refreshFluentStyle();
+             } );
 
-    QAbstractButton *defaultBtn = btnGroup->button(0);
-    if (defaultBtn)
+    QAbstractButton* defaultBtn = btnGroup->button( 0 );
+    if ( defaultBtn )
     {
-        defaultBtn->setChecked(true);
-        defaultBtn->setText(QString::fromUtf16(u"\uE73E"));
+        defaultBtn->setChecked( true );
+        defaultBtn->setText( QString::fromUtf16( u"\uE73E" ) );
     }
 }
 

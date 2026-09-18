@@ -16,6 +16,7 @@ class ExComboBox;
 class QTreeWidgetItem;
 class PageTab;
 class PageInstalledSoftware;
+class ExTour;
 #ifdef GALLERY_ENABLE_FRAMELESS
 class FluentWindowFrame;
 #endif
@@ -71,7 +72,10 @@ private slots:
     void on_rBLangEn_US_clicked(bool checked);
     void on_rBLangSystem_clicked(bool checked);
 
+    void startGalleryTour();
+
 private:
+    void setupGalleryTour();
     void initializeFluentBorderWidgets();
     void initializeComponents();
     void setupSettingsPage();
@@ -145,6 +149,7 @@ private:
     QTabBar *m_tabBarWidgetBg{nullptr};
     WidgetBgMode m_widgetBgMode{WidgetBgMode::None};
     QAction *m_navigationToggleAction{nullptr};
+    ExTour *m_galleryTour{nullptr};
 
     ExComboBox *themeComboBox{nullptr};
     ExComboBox *m_colorSchemeCombo{nullptr};

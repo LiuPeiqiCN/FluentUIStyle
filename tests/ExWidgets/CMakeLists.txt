@@ -13,3 +13,10 @@ target_link_libraries(ExWidgetsColorPickerDialogTests PRIVATE
     Qt${QT_VERSION_MAJOR}::Test
 )
 add_test(NAME ExWidgetsColorPickerDialogTests COMMAND ExWidgetsColorPickerDialogTests)
+
+add_executable(ExWidgetsCarouselTests tst_carousel.cpp)
+target_link_libraries(ExWidgetsCarouselTests PRIVATE
+    ExWidgets::ExWidgets
+    Qt${QT_VERSION_MAJOR}::Test
+)
+add_test(NAME ExWidgetsCarouselTests COMMAND ExWidgetsCarouselTests)

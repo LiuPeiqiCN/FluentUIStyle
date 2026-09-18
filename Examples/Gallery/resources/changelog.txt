@@ -3,7 +3,7 @@
 2. 全面消除 ExWidgets 各控件内部字体图标硬编码，统一规范为 ExFontIcon 接口体系
 3. ExTour 漫游引导控件关闭按钮改用原生矢量文字渲染，解决高分屏（DPI 缩放）下图标模糊问题并自动跟随主题调色板
 4. ExTour 优化按键交互（避免聚焦卡片按钮时被顶层遮罩截胡）、小三角内外边距联动与卡片尺寸自适应
-5. ExBreadcrumbBar 面包屑导航增加 QStringList 数据源便捷重载，修复溢出菜单动作动态分配时的内存累积隐患
+5. ExBreadcrumbBar 面包屑导航增加 setItems(const QStringList&) 数据源便捷接口，修复溢出菜单动作动态分配时的内存累积隐患
 6. ExExpander 展开箭头接入 FluentUI3Colors 标准配色，修复浅色主题下悬停与按下背景不明显的问题
 
 【更新内容2026-9-11】

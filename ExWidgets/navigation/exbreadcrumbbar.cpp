@@ -438,7 +438,7 @@ void ExBreadcrumbBar::setItemsSource( QVariantList items )
     Q_EMIT itemsSourceChanged( d->items );
 }
 
-void ExBreadcrumbBar::setItemsSource( const QStringList& items )
+void ExBreadcrumbBar::setItems( const QStringList& items )
 {
     QVariantList list;
     list.reserve( items.size() );

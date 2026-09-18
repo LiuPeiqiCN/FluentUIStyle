@@ -19,7 +19,7 @@ public:
     EXWIDGETS_DECLARE_PROPERTY_D_NOTIFY( QVariantList, itemsSource, itemsSource, setItemsSource, itemsSourceChanged )
     EXWIDGETS_DECLARE_PROPERTY_D_NOTIFY( QAbstractItemDelegate*, itemTemplate, itemTemplate, setItemTemplate, itemTemplateChanged )
 
-    void setItemsSource( const QStringList& items );
+    void setItems( const QStringList& items );
 
     explicit ExBreadcrumbBar( QWidget* parent = nullptr );
     ~ExBreadcrumbBar() override;

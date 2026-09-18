@@ -122,15 +122,8 @@ jobs:
           }
 
           Write-Host "Copying runtime binaries from: $binDir"
-          # 1. 根目录仅放置主程序 Gallery.exe，消除混淆
-          Copy-Item "$binDir/Gallery.exe" -Destination $galleryDir -Force
-
-          # 2. 将其余示例程序整理入 demos/ 子目录
-          $demosDir = "$galleryDir/demos"
-          New-Item -ItemType Directory -Path $demosDir -Force | Out-Null
-          Get-ChildItem -Path $binDir -Filter "*.exe" | Where-Object { $_.Name -ne "Gallery.exe" } | Copy-Item -Destination $demosDir -Force
-
-          # 3. 复制依赖库（明确排除 FluentUI3Style.dll，样式完全通过插件提供）
+          # 复制所有可执行程序与依赖 DLL（排除独立 FluentUI3Style.dll，样式由插件提供）
+          Copy-Item "$binDir/*.exe" -Destination $galleryDir -Force
           Get-ChildItem -Path $binDir -Filter "*.dll" | Where-Object { $_.Name -notmatch '^FluentUI3Style\.dll$' } | Copy-Item -Destination $galleryDir -Force
 
           # 4. 复制样式插件目录

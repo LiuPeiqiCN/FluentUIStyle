@@ -1,117 +1,182 @@
 #include "pagesegoeicongallery.h"
 
+#include <QAbstractListModel>
 #include <QClipboard>
 #include <QFile>
 #include <QFont>
 #include <QGuiApplication>
 #include <QHBoxLayout>
-#include <QHeaderView>
 #include <QLabel>
 #include <QLineEdit>
-#include <QMouseEvent>
+#include <QListView>
 #include <QPainter>
 #include <QPalette>
 #include <QRegularExpression>
-#include <QTableWidget>
+#include <QSortFilterProxyModel>
+#include <QStyledItemDelegate>
 #include <QTextStream>
 #include <QVBoxLayout>
 
 #include <exinfobar.h>
 #include <exinfobarhost.h>
-#include <functional>
 
 #include "font-icon/fonticon.h"
 
-
 namespace {
 
-class IconCardWidget final : public QWidget
+enum SegoeIconCustomRoles {
+    NameRole = Qt::UserRole + 1,
+    CodeRole,
+    CodeTextRole,
+    SearchRole,
+};
+
+// =============================================================================
+// SegoeIconModel：只读数据模型，管理 1403 个图标的数据提供
+// =============================================================================
+class SegoeIconModel : public QAbstractListModel
 {
 public:
-    IconCardWidget( QString name, QString codeText, QWidget* parent = nullptr )
-        : QWidget( parent )
-        , m_name( std::move( name ) )
-        , m_codeText( std::move( codeText ) )
+    explicit SegoeIconModel( QObject* parent = nullptr )
+        : QAbstractListModel( parent )
+        , m_entries( PageSegoeIconGallery::iconEntries() )
     {
-        setCursor( Qt::PointingHandCursor );
-        setAttribute( Qt::WA_Hover, true );
     }
 
-    std::function<void( const QString& name, const QString& codeText )> onClicked;
-
-protected:
-    bool event( QEvent* event ) override
+    int rowCount( const QModelIndex& parent = QModelIndex() ) const override
     {
-        if ( event->type() == QEvent::HoverEnter )
+        if ( parent.isValid() )
         {
-            m_hovered = true;
-            update();
+            return 0;
         }
-        else if ( event->type() == QEvent::HoverLeave )
-        {
-            m_hovered = false;
-            m_pressed = false;
-            update();
-        }
-        return QWidget::event( event );
+        return m_entries.size();
     }
 
-    void mousePressEvent( QMouseEvent* event ) override
+    QVariant data( const QModelIndex& index, int role = Qt::DisplayRole ) const override
     {
-        if ( event->button() == Qt::LeftButton )
+        if ( !index.isValid() || index.row() < 0 || index.row() >= m_entries.size() )
         {
-            m_pressed = true;
-            update();
+            return {};
         }
-        QWidget::mousePressEvent( event );
-    }
 
-    void mouseReleaseEvent( QMouseEvent* event ) override
-    {
-        if ( m_pressed && event->button() == Qt::LeftButton )
+        const auto& entry = m_entries.at( index.row() );
+        switch ( role )
         {
-            m_pressed = false;
-            update();
-            if ( rect().contains( event->pos() ) && onClicked )
+            case Qt::DisplayRole :
+            case NameRole :
+                return entry.name;
+            case CodeRole :
+                return entry.code;
+            case CodeTextRole :
+                return QStringLiteral( "0x%1" ).arg( QString::number( entry.code, 16 ).toUpper().rightJustified( 4, QLatin1Char( '0' ) ) );
+            case SearchRole :
+                return QStringLiteral( "%1 %2 0x%2" ).arg( entry.name, QString::number( entry.code, 16 ) );
+            case Qt::ToolTipRole :
             {
-                onClicked( m_name, m_codeText );
+                const QString codeText = QStringLiteral( "0x%1" ).arg( QString::number( entry.code, 16 ).toUpper().rightJustified( 4, QLatin1Char( '0' ) ) );
+                return QStringLiteral( "%1\n%2\n点击复制编码" ).arg( entry.name, codeText );
             }
+            default :
+                break;
         }
-        QWidget::mouseReleaseEvent( event );
-    }
-
-    void paintEvent( QPaintEvent* event ) override
-    {
-        QWidget::paintEvent( event );
-        if ( m_hovered || m_pressed )
-        {
-            QPainter painter( this );
-            painter.setRenderHint( QPainter::Antialiasing );
-            const bool darkLike = palette().color( QPalette::Base ).lightness() < 128;
-            QColor bgColor      = darkLike ? QColor( 255, 255, 255 ) : QColor( 0, 0, 0 );
-            bgColor.setAlpha( m_pressed ? 22 : 12 );
-            painter.setBrush( bgColor );
-            painter.setPen( Qt::NoPen );
-            painter.drawRoundedRect( rect().adjusted( 2, 2, -2, -2 ), 6.0, 6.0 );
-        }
+        return {};
     }
 
 private:
-    QString m_name;
-    QString m_codeText;
-    bool m_hovered = false;
-    bool m_pressed = false;
+    QList<PageSegoeIconGallery::IconEntry> m_entries;
+};
+
+// =============================================================================
+// SegoeIconDelegate：高性能轻量化卡片绘制委托
+// =============================================================================
+class SegoeIconDelegate : public QStyledItemDelegate
+{
+public:
+    explicit SegoeIconDelegate( QObject* parent = nullptr )
+        : QStyledItemDelegate( parent )
+    {
+    }
+
+    QSize sizeHint( const QStyleOptionViewItem& /*option*/, const QModelIndex& /*index*/ ) const override
+    {
+        return QSize( 114, 104 );
+    }
+
+    void paint( QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index ) const override
+    {
+        if ( !index.isValid() )
+        {
+            return;
+        }
+
+        painter->save();
+        painter->setRenderHint( QPainter::Antialiasing, true );
+        painter->setRenderHint( QPainter::TextAntialiasing, true );
+
+        const QRect rect     = option.rect.adjusted( 3, 3, -3, -3 );
+        const bool isDark    = option.palette.color( QPalette::Base ).lightness() < 128;
+        const bool isHover   = ( option.state & QStyle::State_MouseOver );
+        const bool isPressed = ( option.state & QStyle::State_Sunken );
+
+        // 绘制悬停与按下态高光圆角底色
+        if ( isHover || isPressed )
+        {
+            QColor bgColor = isDark ? QColor( 255, 255, 255 ) : QColor( 0, 0, 0 );
+            bgColor.setAlpha( isPressed ? 24 : 12 );
+            painter->setBrush( bgColor );
+            painter->setPen( Qt::NoPen );
+            painter->drawRoundedRect( rect, 6.0, 6.0 );
+        }
+
+        const QString name     = index.data( NameRole ).toString();
+        const int code         = index.data( CodeRole ).toInt();
+        const QString codeText = index.data( CodeTextRole ).toString();
+
+        // 1. 绘制 Segoe Fluent Icons 图标字体
+        QFont iconFont( QString::fromLatin1( SegoeIcon::SegoeFontName ) );
+        iconFont.setPixelSize( 30 );
+        iconFont.setHintingPreference( QFont::PreferNoHinting );
+        painter->setFont( iconFont );
+        painter->setPen( isDark ? QColor( 255, 255, 255 ) : QColor( 26, 26, 26 ) );
+
+        const QRect iconRect( rect.left(), rect.top() + 6, rect.width(), 36 );
+        painter->drawText( iconRect, Qt::AlignCenter, QString( QChar( static_cast<char16_t>( code ) ) ) );
+
+        // 2. 绘制图标名称
+        QFont nameFont = option.font;
+        nameFont.setPixelSize( 11 );
+        painter->setFont( nameFont );
+        painter->setPen( isDark ? QColor( 230, 230, 230 ) : QColor( 32, 32, 32 ) );
+
+        const QRect nameRect( rect.left() + 4, iconRect.bottom() + 4, rect.width() - 8, 30 );
+        painter->drawText( nameRect, Qt::AlignHCenter | Qt::AlignTop | Qt::TextWordWrap, name );
+
+        // 3. 绘制 16 进制编码
+        QFont codeFont = nameFont;
+        codeFont.setPixelSize( 10 );
+        painter->setFont( codeFont );
+        QColor subColor = option.palette.color( QPalette::WindowText );
+        subColor.setAlpha( isDark ? 160 : 130 );
+        painter->setPen( subColor );
+
+        const QRect codeRect( rect.left() + 4, rect.bottom() - 16, rect.width() - 8, 15 );
+        painter->drawText( codeRect, Qt::AlignHCenter | Qt::AlignBottom, codeText );
+
+        painter->restore();
+    }
 };
 
 }  // namespace
 
+// =============================================================================
+// PageSegoeIconGallery 实现
+// =============================================================================
 PageSegoeIconGallery::PageSegoeIconGallery( QWidget* parent )
     : QFrame( parent )
 {
     setFrameShape( QFrame::StyledPanel );
 
     initializeUi();
-    populateTable();
 }
 
 void PageSegoeIconGallery::initializeUi()
@@ -128,130 +193,65 @@ void PageSegoeIconGallery::initializeUi()
     m_searchEdit->setClearButtonEnabled( true );
     m_searchEdit->setFixedWidth( 240 );
 
-    m_tableWidget = new QTableWidget( this );
-    m_tableWidget->setBackgroundRole( QPalette::Base );
-    m_tableWidget->setAutoFillBackground( true );
-    m_tableWidget->setColumnCount( 10 );
-    m_tableWidget->setEditTriggers( QAbstractItemView::NoEditTriggers );
-    m_tableWidget->setSelectionMode( QAbstractItemView::NoSelection );
-    m_tableWidget->setShowGrid( false );
-    m_tableWidget->setFocusPolicy( Qt::NoFocus );
-    m_tableWidget->setFrameShape( QFrame::NoFrame );
-    m_tableWidget->setWordWrap( true );
-    m_tableWidget->setVerticalScrollMode( QAbstractItemView::ScrollPerPixel );
-    m_tableWidget->verticalHeader()->setVisible( false );
-    m_tableWidget->horizontalHeader()->setVisible( false );
-    m_tableWidget->horizontalHeader()->setDefaultSectionSize( 110 );
-    m_tableWidget->horizontalHeader()->setMinimumSectionSize( 78 );
-
     QHBoxLayout* topBarLayout = new QHBoxLayout();
     topBarLayout->setContentsMargins( 0, 0, 0, 0 );
     topBarLayout->addWidget( titleLabel );
     topBarLayout->addStretch();
     topBarLayout->addWidget( m_searchEdit );
 
-    connect( m_searchEdit, &QLineEdit::textChanged, this, [ this ]( const QString& text ) { populateTable( text ); } );
+    // 构建 Model - View - Delegate 架构
+    m_model      = new SegoeIconModel( this );
+    m_proxyModel = new QSortFilterProxyModel( this );
+    m_proxyModel->setSourceModel( m_model );
+    m_proxyModel->setFilterRole( SearchRole );
+    m_proxyModel->setFilterCaseSensitivity( Qt::CaseInsensitive );
+
+    m_listView = new QListView( this );
+    m_listView->setViewMode( QListView::IconMode );
+    m_listView->setResizeMode( QListView::Adjust );
+    m_listView->setUniformItemSizes( true );
+    m_listView->setMovement( QListView::Static );
+    m_listView->setSpacing( 4 );
+    m_listView->setGridSize( QSize( 114, 104 ) );
+    m_listView->setSelectionMode( QAbstractItemView::NoSelection );
+    m_listView->setEditTriggers( QAbstractItemView::NoEditTriggers );
+    m_listView->setFrameShape( QFrame::NoFrame );
+    m_listView->setVerticalScrollMode( QAbstractItemView::ScrollPerPixel );
+    m_listView->setHorizontalScrollBarPolicy( Qt::ScrollBarAlwaysOff );
+    m_listView->setWordWrap( true );
+    m_listView->setMouseTracking( true );
+    m_listView->setItemDelegate( new SegoeIconDelegate( m_listView ) );
+    m_listView->setModel( m_proxyModel );
+
+    // 搜索实时联动
+    connect( m_searchEdit, &QLineEdit::textChanged, m_proxyModel, &QSortFilterProxyModel::setFilterFixedString );
+
+    // 点击复制到剪贴板并提示
+    connect( m_listView, &QListView::clicked, this, [ this ]( const QModelIndex& index ) {
+        if ( !index.isValid() )
+        {
+            return;
+        }
+
+        const QString name = index.data( NameRole ).toString();
+        const QString code = index.data( CodeTextRole ).toString();
+
+        QGuiApplication::clipboard()->setText( code );
+
+        ExInfoBarHost* host = ExInfoBarHost::defaultHost();
+        if ( !host )
+        {
+            host = new ExInfoBarHost( window() ? window() : this, this );
+        }
+        host->showInfoBar( ExInfoBar::Success,
+                           QStringLiteral( "已复制到剪贴板" ),
+                           QStringLiteral( "图标: %1   编码: %2" ).arg( name, code ),
+                           ExInfoBarHost::Top,
+                           2000 );
+    } );
 
     layout->addLayout( topBarLayout );
-    layout->addWidget( m_tableWidget, 1 );
-}
-
-void PageSegoeIconGallery::populateTable( const QString& keyword )
-{
-    const QList<IconEntry> entries = iconEntries();
-    const QString filter           = keyword.trimmed().toLower();
-
-    QList<int> matchedIndexes;
-    matchedIndexes.reserve( entries.size() );
-    for ( int i = 0; i < entries.size(); ++i )
-    {
-        const QString name          = entries[ i ].name.toLower();
-        const QString hexCode       = QString::number( entries[ i ].code, 16 ).toLower();
-        const QString hexWithPrefix = QStringLiteral( "0x" ) + hexCode;
-        if ( filter.isEmpty() || name.contains( filter ) || hexCode.contains( filter ) || hexWithPrefix.contains( filter ) )
-        {
-            matchedIndexes.append( i );
-        }
-    }
-
-    const int columnCount = m_tableWidget->columnCount();
-    const int rowCount    = ( matchedIndexes.size() + columnCount - 1 ) / columnCount;
-    m_tableWidget->clearContents();
-    m_tableWidget->setRowCount( rowCount );
-
-    const bool darkLike = palette().color( QPalette::Base ).lightness() < 128;
-
-    for ( int row = 0; row < rowCount; ++row )
-    {
-        m_tableWidget->setRowHeight( row, 100 );
-    }
-
-    for ( int i = 0; i < matchedIndexes.size(); ++i )
-    {
-        const IconEntry& entry = entries[ matchedIndexes.at( i ) ];
-        const int row          = i / columnCount;
-        const int col          = i % columnCount;
-
-        const QString codeText =
-            QStringLiteral( "0x%1" ).arg( QString::number( entry.code, 16 ).toUpper().rightJustified( 4, QLatin1Char( '0' ) ) );
-
-        IconCardWidget* cellWidget = new IconCardWidget( entry.name, codeText, m_tableWidget );
-        cellWidget->setToolTip( QStringLiteral( "%1\n%2\n点击复制编码" ).arg( entry.name, codeText ) );
-
-        QVBoxLayout* cellLayout = new QVBoxLayout( cellWidget );
-        cellLayout->setContentsMargins( 4, 4, 4, 4 );
-        cellLayout->setSpacing( 2 );
-
-        QLabel* iconLabel = new QLabel( cellWidget );
-        iconLabel->setAttribute( Qt::WA_TransparentForMouseEvents, true );
-        iconLabel->setAlignment( Qt::AlignCenter );
-        QFont iconFont( QString::fromLatin1( SegoeIcon::SegoeFontName ) );
-        iconFont.setPixelSize( 30 );
-        iconFont.setHintingPreference( QFont::PreferNoHinting );
-        iconLabel->setFont( iconFont );
-        iconLabel->setText( QString( QChar( static_cast<char16_t>( entry.code ) ) ) );
-        iconLabel->setMinimumHeight( 36 );
-
-        QLabel* nameLabel = new QLabel( entry.name, cellWidget );
-        nameLabel->setAttribute( Qt::WA_TransparentForMouseEvents, true );
-        nameLabel->setAlignment( Qt::AlignHCenter | Qt::AlignTop );
-        nameLabel->setWordWrap( true );
-
-        QLabel* codeLabel = new QLabel( codeText, cellWidget );
-        codeLabel->setAttribute( Qt::WA_TransparentForMouseEvents, true );
-        codeLabel->setAlignment( Qt::AlignHCenter | Qt::AlignTop );
-        QFont codeFont = codeLabel->font();
-        codeFont.setPixelSize( 11 );
-        codeLabel->setFont( codeFont );
-
-        QPalette codePalette = codeLabel->palette();
-        QColor subColor      = codePalette.color( QPalette::WindowText );
-        subColor.setAlpha( darkLike ? 160 : 130 );
-        codePalette.setColor( QPalette::WindowText, subColor );
-        codeLabel->setPalette( codePalette );
-
-        cellLayout->addWidget( iconLabel );
-        cellLayout->addWidget( nameLabel );
-        cellLayout->addWidget( codeLabel );
-
-        cellWidget->onClicked = [ this ]( const QString& name, const QString& code )
-        {
-            QGuiApplication::clipboard()->setText( code );
-
-            ExInfoBarHost* host = ExInfoBarHost::defaultHost();
-            if ( !host )
-            {
-                host = new ExInfoBarHost( window() ? window() : this, this );
-            }
-            host->showInfoBar( ExInfoBar::Success,
-                               QStringLiteral( "已复制到剪贴板" ),
-                               QStringLiteral( "图标: %1   编码: %2" ).arg( name, code ),
-                               ExInfoBarHost::Top,
-                               2000 );
-        };
-
-        m_tableWidget->setCellWidget( row, col, cellWidget );
-    }
+    layout->addWidget( m_listView, 1 );
 }
 
 QList<PageSegoeIconGallery::IconEntry> PageSegoeIconGallery::iconEntries()

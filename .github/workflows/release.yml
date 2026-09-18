@@ -122,27 +122,43 @@ jobs:
           }
 
           Write-Host "Copying runtime binaries from: $binDir"
-          # 复制主要可执行程序与依赖 DLL
-          Copy-Item "$binDir/*.exe" -Destination $galleryDir -Force
-          Copy-Item "$binDir/*.dll" -Destination $galleryDir -Force
+          # 1. 根目录仅放置主程序 Gallery.exe，消除混淆
+          Copy-Item "$binDir/Gallery.exe" -Destination $galleryDir -Force
 
-          # 复制样式插件目录
+          # 2. 将其余示例程序整理入 demos/ 子目录
+          $demosDir = "$galleryDir/demos"
+          New-Item -ItemType Directory -Path $demosDir -Force | Out-Null
+          Get-ChildItem -Path $binDir -Filter "*.exe" | Where-Object { $_.Name -ne "Gallery.exe" } | Copy-Item -Destination $demosDir -Force
+
+          # 3. 复制依赖库（明确排除 FluentUI3Style.dll，样式完全通过插件提供）
+          Get-ChildItem -Path $binDir -Filter "*.dll" | Where-Object { $_.Name -notmatch '^FluentUI3Style\.dll$' } | Copy-Item -Destination $galleryDir -Force
+
+          # 4. 复制样式插件目录
           $stylesSourceDir = "$binDir/plugins/styles"
           if (-not (Test-Path $stylesSourceDir)) {
               $stylesSourceDir = "$binDir/styles"
           }
           if (Test-Path $stylesSourceDir) {
-              $targetStyles = "$galleryDir/styles"
-              New-Item -ItemType Directory -Path $targetStyles -Force | Out-Null
-              Copy-Item "$stylesSourceDir/*.dll" -Destination $targetStyles -Force
-              
-              # 同时备用 plugins/styles 目录，确保各种加载方式都能找到插件
+              # Qt 标准插件目录 plugins/styles
               $targetPluginsStyles = "$galleryDir/plugins/styles"
               New-Item -ItemType Directory -Path $targetPluginsStyles -Force | Out-Null
               Copy-Item "$stylesSourceDir/*.dll" -Destination $targetPluginsStyles -Force
+
+              # 兼容备用 styles 目录
+              $targetStyles = "$galleryDir/styles"
+              New-Item -ItemType Directory -Path $targetStyles -Force | Out-Null
+              Copy-Item "$stylesSourceDir/*.dll" -Destination $targetStyles -Force
           }
 
-          # 运行 windeployqt 自动补全所有 Qt 运行环境
+          # 5. 写入标准 qt.conf，消除 CI 虚拟机硬编码路径漫游与超时
+          $qtConfContent = @"
+[Paths]
+Prefix = .
+Plugins = plugins
+"@
+          Set-Content -Path "$galleryDir/qt.conf" -Value $qtConfContent -Encoding Ascii
+
+          # 6. 运行 windeployqt 自动补全所有 Qt 运行环境
           $galleryExe = "$galleryDir/Gallery.exe"
           Write-Host "Running windeployqt on $galleryExe..."
           $windeployCmd = Get-Command windeployqt.exe -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source
@@ -154,6 +170,11 @@ jobs:
               & $windeployCmd --release --no-translations --compiler-runtime "$galleryExe"
           } else {
               windeployqt.exe --release --no-translations --compiler-runtime "$galleryExe"
+          }
+
+          # 确保根目录绝不残留多余的 FluentUI3Style.dll
+          if (Test-Path "$galleryDir/FluentUI3Style.dll") {
+              Remove-Item "$galleryDir/FluentUI3Style.dll" -Force
           }
 
           # 压缩为 Portable 绿色包

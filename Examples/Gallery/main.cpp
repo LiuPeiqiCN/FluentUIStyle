@@ -8,84 +8,90 @@
 #include <QTextEdit>
 
 #ifdef HAS_FLUENTUI3_STYLE_LIB
-#include "fluentui3style.h"
+#    include "fluentui3style.h"
 #endif
 
+#include <QApplication>
+#include <QDebug>
+#include <QPalette>
+#include <QPropertyAnimation>
+
+#include "mainwindow.h"
 #include "qabstractitemview.h"
 #include "qboxlayout.h"
 #include "qcombobox.h"
 #include "qdebug.h"
 #include "qevent.h"
 #include "qlineedit.h"
-#include <QApplication>
-#include <QDebug>
-#include <QPalette>
-#include <QPropertyAnimation>
-#include <QStyleHints>
 
 #include "diagnostics/crashdump.h"
-#include "mainwindow.h"
 
 #ifdef GALLERY_ENABLE_I18N
-#include "applanguage.h"
+#    include "applanguage.h"
 #endif
 #include "qstylefactory.h"
 
-int main(int argc, char *argv[]) {
-#if (QT_VERSION < QT_VERSION_CHECK(6, 0, 0))
-  QGuiApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
-  QGuiApplication::setAttribute(Qt::AA_UseHighDpiPixmaps);
-#if QT_VERSION >= QT_VERSION_CHECK(5, 14, 0)
-  QGuiApplication::setHighDpiScaleFactorRoundingPolicy(
-      Qt::HighDpiScaleFactorRoundingPolicy::PassThrough);
-#else
-  // 改成屏幕实际缩放的
-  qputenv("QT_SCREEN_SCALE_FACTORS", "1.25");
-#endif
+int main( int argc, char* argv[] )
+{
+#if ( QT_VERSION < QT_VERSION_CHECK( 6, 0, 0 ) )
+    QGuiApplication::setAttribute( Qt::AA_EnableHighDpiScaling );
+    QGuiApplication::setAttribute( Qt::AA_UseHighDpiPixmaps );
+#    if QT_VERSION >= QT_VERSION_CHECK( 5, 14, 0 )
+    QGuiApplication::setHighDpiScaleFactorRoundingPolicy( Qt::HighDpiScaleFactorRoundingPolicy::PassThrough );
+#    else
+    // 改成屏幕实际缩放的
+    qputenv( "QT_SCREEN_SCALE_FACTORS", "1.25" );
+#    endif
 #endif
 
-  QApplication a(argc, argv);
-  const QString crashDumpDirectory = GalleryCrashDump::install();
-  if (!crashDumpDirectory.isEmpty()) {
-    qInfo() << "Crash dumps:" << crashDumpDirectory;
-  }
+    QApplication a( argc, argv );
 
-  qDebug() << QStyleFactory::keys();
-  qApp->setProperty("secondLevelRoundingRadius", 3);
-  qApp->setProperty(
-      "_q_scrollHint_center",
-      false); // 控制QComboBox弹出位置，默认false，true则在QComboBox中心位置弹出
-  qApp->setProperty("_q_themestyle", 0); // 控制配色方案，默认0-Fluent, 1-Teams
-  // qApp->setProperty("comboBoxPopupDropDownAnimationEnabled", false);
-  // qApp->setProperty("menuPopupAnimationEnabled", false);
+    // 保证就近优先检索本地 plugins 与 styles 目录，避免跨环境路径漫游
+    const QString appDir = QCoreApplication::applicationDirPath();
+    QApplication::addLibraryPath( appDir + QStringLiteral( "/plugins" ) );
+    QApplication::addLibraryPath( appDir + QStringLiteral( "/styles" ) );
+
+    const QString crashDumpDirectory = GalleryCrashDump::install();
+    if ( !crashDumpDirectory.isEmpty() )
+    {
+        qInfo() << "Crash dumps:" << crashDumpDirectory;
+    }
+
+    qDebug() << QStyleFactory::keys();
+    qApp->setProperty( "secondLevelRoundingRadius", 3 );
+    qApp->setProperty( "_q_scrollHint_center",
+                       false );               // 控制QComboBox弹出位置，默认false，true则在QComboBox中心位置弹出
+    qApp->setProperty( "_q_themestyle", 0 );  // 控制配色方案，默认0-Fluent, 1-Teams
+                                              // qApp->setProperty("comboBoxPopupDropDownAnimationEnabled", false);
+                                              // qApp->setProperty("menuPopupAnimationEnabled", false);
 
 #ifdef Q_OS_ANDROID
-  // 全局禁用所有 QComboBox 的展开动画
-  qApp->setProperty("comboBoxPopupDropDownAnimationEnabled", false);
+    // 全局禁用所有 QComboBox 的展开动画
+    qApp->setProperty( "comboBoxPopupDropDownAnimationEnabled", false );
 #endif
 
 #ifdef Q_OS_WIN
-  qApp->setStyle("FluentUI3");
-#elif defined(HAS_FLUENTUI3_STYLE_LIB)
-  qApp->setStyle(new FluentUI3Style);
+    qApp->setStyle( "FluentUI3" );
+#elif defined( HAS_FLUENTUI3_STYLE_LIB )
+    qApp->setStyle( new FluentUI3Style );
 #endif
 
 #ifdef GALLERY_ENABLE_I18N
-  AppLanguage::applyTranslator(AppLanguage::effectiveUiLanguage());
+    AppLanguage::applyTranslator( AppLanguage::effectiveUiLanguage() );
 #endif
 
-  QFont font = a.font();
-  font.setPixelSize(13);
-  font.setFamily("微软雅黑");
-  font.setHintingPreference(QFont::PreferNoHinting);
-  a.setFont(font);
+    QFont font = a.font();
+    font.setPixelSize( 13 );
+    font.setFamily( "微软雅黑" );
+    font.setHintingPreference( QFont::PreferNoHinting );
+    a.setFont( font );
 
-  MainWindow w;
+    MainWindow w;
 #ifdef Q_OS_ANDROID
-  w.showMaximized();
+    w.showMaximized();
 #else
-  w.show();
+    w.show();
 #endif
 
-  return a.exec();
+    return a.exec();
 }

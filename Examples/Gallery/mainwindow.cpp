@@ -790,7 +790,19 @@ void MainWindow::initializeComponents()
     rebuildMenuAndToolBar();
     initializeNavigationView();
     m_installedSoftwareTable = new PageInstalledSoftware( ui->tableWidget, this );
-    m_installedSoftwareTable->initialize();
+    // 延迟加载已安装软件列表：在用户首次切换到表格页或启动空闲后预热，避免阻塞程序冷启动
+    connect( ui->stackedWidget, &QStackedWidget::currentChanged, this, [ this ]( int index ) {
+        if ( index == 1 && m_installedSoftwareTable )
+        {
+            m_installedSoftwareTable->ensureInitialized();
+        }
+    } );
+    QTimer::singleShot( 1200, this, [ this ]() {
+        if ( m_installedSoftwareTable )
+        {
+            m_installedSoftwareTable->ensureInitialized();
+        }
+    } );
 
     // Configure background properties
     ui->centralwidget->setAttribute( Qt::WA_TranslucentBackground, true );

@@ -5,27 +5,30 @@
 #include <QString>
 
 class QLineEdit;
-class QTableWidget;
+class QListView;
+class QAbstractItemModel;
+class QSortFilterProxyModel;
 
 class PageSegoeIconGallery : public QFrame
 {
     Q_OBJECT
 
 public:
-    explicit PageSegoeIconGallery(QWidget *parent = nullptr);
-
-private:
     struct IconEntry
     {
         QString name;
         int code;
     };
 
-    void initializeUi();
-    void populateTable(const QString &keyword = QString());
+    explicit PageSegoeIconGallery(QWidget *parent = nullptr);
+
     static QList<IconEntry> iconEntries();
 
-    QLineEdit *m_searchEdit{nullptr};
-    QTableWidget *m_tableWidget{nullptr};
-};
+private:
+    void initializeUi();
 
+    QLineEdit *m_searchEdit{nullptr};
+    QListView *m_listView{nullptr};
+    QAbstractItemModel *m_model{nullptr};
+    QSortFilterProxyModel *m_proxyModel{nullptr};
+};

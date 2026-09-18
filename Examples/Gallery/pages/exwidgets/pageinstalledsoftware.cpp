@@ -259,12 +259,22 @@ PageInstalledSoftware::PageInstalledSoftware(QTableWidget *table, QObject *paren
 {
 }
 
-void PageInstalledSoftware::initialize()
+void PageInstalledSoftware::ensureInitialized()
 {
-    if (!m_table)
+    if (m_initialized)
     {
         return;
     }
+    initialize();
+}
+
+void PageInstalledSoftware::initialize()
+{
+    if (m_initialized || !m_table)
+    {
+        return;
+    }
+    m_initialized = true;
 
     QTableWidget *table = m_table;
     table->clear();

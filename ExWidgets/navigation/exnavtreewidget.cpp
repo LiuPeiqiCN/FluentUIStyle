@@ -38,20 +38,17 @@ namespace
             return QIcon();
         }
 
-        constexpr int pixelSize = 25;
-        QFont iconFont("Segoe Fluent Icons");
-        iconFont.setPixelSize(pixelSize);
-
-        QPixmap pixmap(30, 30);
-        pixmap.fill(Qt::transparent);
-
-        QPainter painter(&pixmap);
-        painter.setRenderHints(QPainter::Antialiasing | QPainter::TextAntialiasing | QPainter::SmoothPixmapTransform);
-        painter.setFont(iconFont);
-        painter.setPen(color);
-        painter.drawText(pixmap.rect(), Qt::AlignCenter, unicode);
-
-        return QIcon(pixmap);
+        bool ok = false;
+        int code = unicode.toInt(&ok, 16);
+        if (ok)
+        {
+            return EXFONTICON->getIcon(code, 25, 30, 30, color);
+        }
+        else if (unicode.size() == 1)
+        {
+            return EXFONTICON->getIcon(static_cast<int>(unicode.at(0).unicode()), 25, 30, 30, color);
+        }
+        return EXFONTICON->getIcon(unicode.toInt(), 25, 30, 30, color);
     }
 }
 
@@ -152,6 +149,11 @@ QTreeWidgetItem *ExNavTreeWidget::addNavigationItem(const QString &text, int pag
     return item;
 }
 
+QTreeWidgetItem *ExNavTreeWidget::addNavigationItem(const QString &text, int pageIndex, SegoeIcon::Type icon)
+{
+    return addNavigationItem(text, pageIndex, ExFontIcon::iconString(icon));
+}
+
 void ExNavTreeWidget::configureNavigationItem(QTreeWidgetItem *item, const QString &text, int pageIndex, const QString &iconCode)
 {
     if (!item)
@@ -166,6 +168,11 @@ void ExNavTreeWidget::configureNavigationItem(QTreeWidgetItem *item, const QStri
     updateNavigationItemIcon(item);
     Q_D(const ExNavTreeWidget);
     updateNavigationItemText(item, d->navigationExpanded);
+}
+
+void ExNavTreeWidget::configureNavigationItem(QTreeWidgetItem *item, const QString &text, int pageIndex, SegoeIcon::Type icon)
+{
+    configureNavigationItem(item, text, pageIndex, ExFontIcon::iconString(icon));
 }
 
 void ExNavTreeWidget::refreshNavigationIcons()

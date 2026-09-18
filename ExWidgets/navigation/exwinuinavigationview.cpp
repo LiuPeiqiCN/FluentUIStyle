@@ -216,6 +216,13 @@ QTreeWidgetItem *ExWinUINavigationView::addNavigationItem(const QString &text,
     return addMainNavigationItem(text, pageIndex, iconCode);
 }
 
+QTreeWidgetItem *ExWinUINavigationView::addNavigationItem(const QString &text,
+                                                          int pageIndex,
+                                                          SegoeIcon::Type icon)
+{
+    return addMainNavigationItem(text, pageIndex, icon);
+}
+
 QTreeWidgetItem *ExWinUINavigationView::addMainNavigationItem(const QString &text,
                                                               int pageIndex,
                                                               const QString &iconCode)
@@ -229,12 +236,26 @@ QTreeWidgetItem *ExWinUINavigationView::addMainNavigationItem(const QString &tex
     return item;
 }
 
+QTreeWidgetItem *ExWinUINavigationView::addMainNavigationItem(const QString &text,
+                                                              int pageIndex,
+                                                              SegoeIcon::Type icon)
+{
+    return addMainNavigationItem(text, pageIndex, ExFontIcon::iconString(icon));
+}
+
 QTreeWidgetItem *ExWinUINavigationView::addFooterNavigationItem(const QString &text,
                                                                 int pageIndex,
                                                                 const QString &iconCode)
 {
     Q_D(ExWinUINavigationView);
     return d->footerNav ? d->footerNav->addNavigationItem(text, pageIndex, iconCode) : nullptr;
+}
+
+QTreeWidgetItem *ExWinUINavigationView::addFooterNavigationItem(const QString &text,
+                                                                int pageIndex,
+                                                                SegoeIcon::Type icon)
+{
+    return addFooterNavigationItem(text, pageIndex, ExFontIcon::iconString(icon));
 }
 
 void ExWinUINavigationView::setCurrentMainItem(QTreeWidgetItem *item)

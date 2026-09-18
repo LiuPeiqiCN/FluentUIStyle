@@ -1,5 +1,6 @@
 #include "excolorpicker.h"
 #include "colorgradientslider.h"
+#include "exfonticon.h"
 
 #include "fluentui3styleproperties.h"
 
@@ -59,16 +60,9 @@ namespace
 
     // Segoe Fluent Icons 字符（Window 11 内置字体）
     // Spectrum: InkingTool (取色/滴管), Palette: Color (颜色板), Sliders: Equalizer (滑条)
-    static const QChar kSegoeIconSpectrum = QChar(0xE76D);
-    static const QChar kSegoeIconPalette = QChar(0xE790);
-    static const QChar kSegoeIconSliders = QChar(0xE9E9);
-
-    QFont segoeIconFont(int pixelSize = 16)
-    {
-        QFont font(QStringLiteral("Segoe Fluent Icons"), pixelSize);
-        // font.setStyleStrategy(QFont::PreferMatch);
-        return font;
-    }
+    static const QChar kSegoeIconSpectrum = ExFontIcon::iconChar( SegoeIcon::InkingTool );
+    static const QChar kSegoeIconPalette  = ExFontIcon::iconChar( SegoeIcon::Color );
+    static const QChar kSegoeIconSliders  = ExFontIcon::iconChar( SegoeIcon::Equalizer );
 
     // ============================================================================
     // 工具函数
@@ -889,7 +883,7 @@ void ExColorPickerPrivate::updateTabIcons()
     if (!tabBar)
         return;
 
-    QFont iconFont = segoeIconFont(12);
+    QFont iconFont = ExFontIcon::iconFont(14);
     tabBar->setFont(iconFont);
 
     tabBar->setTabText(0, kSegoeIconSpectrum);

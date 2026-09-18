@@ -609,9 +609,7 @@ private:
         QColor symbolColor = outlined ? color : QColor( Qt::white );
         if ( !event->icon().isEmpty() )
         {
-            QFont iconFont( QStringLiteral( "Segoe Fluent Icons" ) );
-            iconFont.setPixelSize( qMax( 7, qRound( m_timeline->nodeSize() * 0.62 ) ) );
-            painter->setFont( iconFont );
+            painter->setFont( ExFontIcon::iconFont( qMax( 8, qRound( m_timeline->nodeSize() * 0.78 ) ) ) );
             painter->setPen( symbolColor );
             painter->drawText(
                 QRectF( center.x() - radius, center.y() - radius, radius * 2.0, radius * 2.0 ), Qt::AlignCenter, event->icon() );
@@ -681,6 +679,11 @@ EX_TIMELINE_EVENT_SETTER( QColor, color, setColor )
 EX_TIMELINE_EVENT_SETTER( QString, icon, setIcon )
 
 #undef EX_TIMELINE_EVENT_SETTER
+
+void ExTimelineEvent::setIcon( SegoeIcon::Type icon )
+{
+    setIcon( ExFontIcon::iconString( icon ) );
+}
 
 void ExTimelineEvent::setStatus( Status status )
 {

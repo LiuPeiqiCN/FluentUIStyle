@@ -3,6 +3,7 @@
 #include <QScopedPointer>
 #include <QWidget>
 
+#include "exfonticon.h"
 #include "exwidgets_global.h"
 
 class QStackedWidget;
@@ -36,8 +37,11 @@ public:
     void setNavigationExpanded(bool expanded, bool animated = true);
     bool navigationExpanded() const;
     QTreeWidgetItem *addNavigationItem(const QString &text, int pageIndex, const QString &iconCode = QString());
+    QTreeWidgetItem *addNavigationItem(const QString &text, int pageIndex, SegoeIcon::Type icon);
     QTreeWidgetItem *addMainNavigationItem(const QString &text, int pageIndex, const QString &iconCode = QString());
+    QTreeWidgetItem *addMainNavigationItem(const QString &text, int pageIndex, SegoeIcon::Type icon);
     QTreeWidgetItem *addFooterNavigationItem(const QString &text, int pageIndex, const QString &iconCode = QString());
+    QTreeWidgetItem *addFooterNavigationItem(const QString &text, int pageIndex, SegoeIcon::Type icon);
     void setCurrentMainItem(QTreeWidgetItem *item);
     void clearFooterSelection();
 

@@ -1,4 +1,5 @@
 #include "extimerdial.h"
+#include "exfonticon.h"
 
 #include "fluentui3styleproperties.h"
 
@@ -160,8 +161,9 @@ void ExTimerDial::paintEvent(QPaintEvent* event)
         const QTime finishTime = QTime::currentTime().addMSecs(
             static_cast<int>(qMin<qint64>(m_remainingMilliseconds,
                                          std::numeric_limits<int>::max())));
-        const QString finishText = QStringLiteral("\uE7ED  %1")
-                                       .arg(finishTime.toString(QStringLiteral("HH:mm")));
+        const QString finishText = QStringLiteral("%1  %2")
+                                       .arg(ExFontIcon::iconChar(SegoeIcon::RingerSilent),
+                                            finishTime.toString(QStringLiteral("HH:mm")));
         QFont finishFont = font();
         finishFont.setPixelSize(12);
         painter.setFont(finishFont);

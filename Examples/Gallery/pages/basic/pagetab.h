@@ -30,6 +30,9 @@ private:
 
 private:
     ExTabWidget *m_capsuleTabWidget{nullptr};
+    QTabBar *m_pivotGrowBar{nullptr};
+    QTabBar *m_pivotSlideBar{nullptr};
+    QTabBar *m_pivotStretchBar{nullptr};
     QTabBar *m_segmentedBar{nullptr};
     QTabBar *m_segmentedFadeBar{nullptr};
     QTabBar *m_winui3Bar{nullptr};

@@ -8,6 +8,7 @@
 #include <QPalette>
 #include <QString>
 
+#include "exfonticon.h"
 #include "exwidgets_global.h"
 #include "exwidgetsmacros.h"
 
@@ -62,6 +63,7 @@ public:
 
     // 节点内的 Fluent 字体图标字符；为空时使用状态默认图形。
     EXWIDGETS_DECLARE_PROPERTY( QString, icon, icon, setIcon, QString() )
+    void setIcon( SegoeIcon::Type icon );
 
     // 交错布局下单个事件的内容位置；水平时间轴中 Left/Right 对应上/下。
     EXWIDGETS_DECLARE_PROPERTY( Placement, placement, placement, setPlacement, Automatic )

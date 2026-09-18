@@ -16,6 +16,7 @@
 #include <QVBoxLayout>
 
 static constexpr int kTabBarFluentIconPx = 16;
+static constexpr int kPivotTabIconPx = 22;
 
 static void applySectionHeadingFont(QLabel *label, int pixelSize)
 {
@@ -70,9 +71,9 @@ void PageTab::setupPivotTabs(QVBoxLayout *mainLayout)
     QWidget *pivotWidget = createTabWidgetContainer();
     QVBoxLayout *pivotLayout = static_cast<QVBoxLayout *>(pivotWidget->layout());
 
-    addTabBarSection(pivotLayout, "pivot_grow", tr("Pivot Grow TabBar"), tr("特点：选中时会有一个生长动画效果。"), Pivot_Grow);
-    addTabBarSection(pivotLayout, "pivot_slide", tr("Pivot Slide TabBar"), tr("特点：选中时会有一个滑动动画效果。"), Pivot_Slide);
-    addTabBarSection(pivotLayout, "pivot_stretch", tr("Pivot Stretch TabBar"), tr("特点：选中时会有一个拉伸动画效果。"), Pivot_Stretch);
+    addTabBarSection(pivotLayout, "pivot_grow", tr("Pivot Grow TabBar"), tr("特点：选中时会有一个生长动画效果。"), Pivot_Grow, &m_pivotGrowBar);
+    addTabBarSection(pivotLayout, "pivot_slide", tr("Pivot Slide TabBar"), tr("特点：选中时会有一个滑动动画效果。"), Pivot_Slide, &m_pivotSlideBar);
+    addTabBarSection(pivotLayout, "pivot_stretch", tr("Pivot Stretch TabBar"), tr("特点：选中时会有一个拉伸动画效果。"), Pivot_Stretch, &m_pivotStretchBar);
 
     pivotLayout->addStretch();
     mainLayout->addWidget(pivotWidget, 1);
@@ -375,6 +376,7 @@ void PageTab::addTabBarSection(QVBoxLayout *layout,
         pivotFont.setPixelSize(15);
         pivotFont.setWeight(QFont::Bold);
         tabBar->setFont(pivotFont);
+        tabBar->setIconSize(QSize(kPivotTabIconPx, kPivotTabIconPx));
     }
     else if (tabStyle == Segmented_Slide || tabStyle == Segmented_Fade || tabStyle == Segmented_WinUI3)
     {
@@ -404,6 +406,15 @@ void PageTab::updateTabIcons()
         static_cast<int>(SegoeIcon::Help),
         static_cast<int>(SegoeIcon::Info),
     };
+    const int nCapsule = int(sizeof(capsuleIcons) / sizeof(capsuleIcons[0]));
+    QTabBar *pivotBars[] = {m_pivotGrowBar, m_pivotSlideBar, m_pivotStretchBar};
+    for (QTabBar *pivotBar : pivotBars)
+    {
+        if (!pivotBar)
+            continue;
+        for (int i = 0; i < nCapsule && i < pivotBar->count(); ++i)
+            pivotBar->setTabIcon(i, FONTICON->getIcon(capsuleIcons[i], kPivotTabIconPx, iconColor));
+    }
     if (m_capsuleTabWidget)
     {
         for (int i = 0; i < int(sizeof(capsuleIcons) / sizeof(capsuleIcons[0])) && i < m_capsuleTabWidget->count(); ++i)

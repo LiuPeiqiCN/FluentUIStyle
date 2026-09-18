@@ -1,6 +1,7 @@
 #include "excolorpickerbutton.h"
 
 #include "excolorpicker.h"
+#include "exfonticon.h"
 
 #include <QEvent>
 #include <QMouseEvent>
@@ -14,14 +15,7 @@ constexpr int kContentHMargin = 8;
 constexpr int kContentItemHMargin = 5;
 constexpr int kSwatchVerticalMargin = 5;
 
-static const QChar kChevronDown = QChar(0xE70D);
-
-QFont segoeIconFont(int pixelSize = 12)
-{
-    QFont font(QStringLiteral("Segoe Fluent Icons"), pixelSize);
-    font.setStyleStrategy(QFont::NoFontMerging);
-    return font;
-}
+static const QChar kChevronDown = ExFontIcon::iconChar( SegoeIcon::ChevronDown );
 } // namespace
 
 ExColorPickerButton::ExColorPickerButton(QWidget *parent)
@@ -92,7 +86,7 @@ void ExColorPickerButton::paintEvent(QPaintEvent *)
     painter.setBrush(QBrush(m_selectedColor));
     painter.drawRoundedRect(swatchRect, 3, 3);
 
-    painter.setFont(segoeIconFont(9));
+    painter.setFont(ExFontIcon::iconFont(11));
     const QColor arrowColor = option.state & QStyle::State_Enabled
                                   ? palette().color(QPalette::ButtonText)
                                   : palette().color(QPalette::Disabled, QPalette::ButtonText);

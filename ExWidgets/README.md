@@ -68,6 +68,7 @@ LIBS += -lExWidgets
 | `ExInfoBar` | `exinfobar.h` | 页面内非阻塞通知，支持四种严重级别、操作与关闭动画 | ExWidgets → ExInfoBar / ExExpander |
 | `ExInfoBarHost` | `exinfobarhost.h` | 窗口级 InfoBar 弹出、六向定位、多条堆叠与超时管理 | ExWidgets → ExInfoBar / ExExpander |
 | `ExExpander` | `exexpander.h` | 可向上或向下展开的 Header/Content 折叠容器 | ExWidgets → ExInfoBar / ExExpander |
+| `ExCarousel` | `excarousel.h` | 水平轮播图，支持自动播放、循环、指示点和左右切换 | ExWidgets → ExCarousel |
 | `ExBreadcrumbBar` | `exbreadcrumbbar.h` | 路径导航、前缀溢出菜单、文本省略、键盘与 RTL 支持 | ExWidgets → ExBreadcrumbBar / ExTeachingTip |
 | `ExTeachingTip` | `exteachingtip.h` | 窗口内非模态引导气泡，支持目标跟随、自动换边、操作按钮与外部关闭 | ExWidgets → ExBreadcrumbBar / ExTeachingTip |
 | `ExTimerDial` | `extimerdial.h` | 剩余时间、环形进度与预计完成时刻 | Win11Clock 计时器 |
@@ -83,6 +84,28 @@ LIBS += -lExWidgets
 | `ExStackedWidget` | `exstackedwidget.h` | 带动画的 `QStackedWidget` | MainWindow 中央区域 |
 | `ExTabWidget` | `extabwidget.h` | 带动画的 `QTabWidget` | Tab 演示 |
 | `ColorGradientSlider` | `colorgradientslider.h` | 渐变轨道滑条（ExColorPicker 内部） | ExColorPicker 内部 |
+
+---
+
+## ExCarousel
+
+水平轮播。支持 `addSlide()` 放入任意 `QWidget`，支持 `addImage()` / `addPixmap()` 放入高清图片并搭配标题与副标题（自动渲染底部半透明渐变遮罩）。支持 WinUI 3 风格强减速丝滑滑动、左右键、滚轮、胶囊指示点以及悬停淡入淡出切换按钮。
+
+```cpp
+#include "excarousel.h"
+
+auto *carousel = new ExCarousel(this);
+carousel->addImage(":/images/carousel_1.jpg", tr("标题"), tr("副标题"));
+carousel->addSlide(customWidget);
+carousel->setAutoPlay(true);
+carousel->setInterval(3500);
+carousel->setWrap(true);
+carousel->setNavigationButtonTrigger(ExCarousel::OnHover); // 切换按钮鼠标移入时淡入
+carousel->setBorderRadius(8.0);                           // 视口圆角裁剪
+connect(carousel, &ExCarousel::currentIndexChanged, this, [](int index) { ... });
+```
+
+悬停默认暂停自动播放。`setAnimationDuration(0)` 可关闭滑动动画。
 
 ---
 
@@ -243,7 +266,7 @@ auto *current = timeline->addEvent(QDateTime::currentDateTime(),
                                    tr("正在处理"),
                                    tr("正在生成结果。"),
                                    ExTimelineEvent::Current);
-current->setIcon(QStringLiteral("\uE895"));
+current->setIcon(SegoeIcon::Sync);
 ```
 
 `orientation` 可切换水平/垂直时间轴。水平模式下，左侧、右侧和交错布局分别映射为上方、下方和上下交错，`horizontalItemWidth` 控制节点间距。`reverse` 只改变显示顺序，不改变 `events()` 的存储顺序。`timeText` 非空时覆盖 `timestamp` 的格式化结果，适合显示“刚刚”“昨天”等相对时间。`Current` 节点可播放呼吸动画，隐藏或禁用控件时动画会自动停止。
@@ -599,8 +622,8 @@ Gallery 主窗口左侧 **WinUI3 导航窗格**：主菜单 + 分隔线 + 页脚
 auto *nav = new ExWinUINavigationView(this);
 nav->setStackedWidget(ui->stackedWidget);
 
-nav->addMainNavigationItem(tr("首页"), 0, QStringLiteral("\uE80F"));
-nav->addFooterNavigationItem(tr("设置"), 5, QStringLiteral("\uE713"));
+nav->addMainNavigationItem(tr("首页"), 0, SegoeIcon::Home);
+nav->addFooterNavigationItem(tr("设置"), 5, SegoeIcon::Settings);
 
 connect(nav, &ExWinUINavigationView::pageIndexChanged, ui->stackedWidget, &QStackedWidget::setCurrentIndex);
 nav->setNavigationExpanded(true, /*animated=*/true);

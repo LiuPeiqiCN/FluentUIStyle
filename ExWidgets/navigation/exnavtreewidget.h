@@ -4,6 +4,7 @@
 #include <QTreeWidget>
 #include <QVariantAnimation>
 
+#include "exfonticon.h"
 #include "exwidgets_global.h"
 
 class ExNavTreeWidgetPrivate;
@@ -29,7 +30,9 @@ public:
     int expandedWidth() const;
 
     QTreeWidgetItem *addNavigationItem(const QString &text, int pageIndex, const QString &iconCode);
+    QTreeWidgetItem *addNavigationItem(const QString &text, int pageIndex, SegoeIcon::Type icon);
     void configureNavigationItem(QTreeWidgetItem *item, const QString &text, int pageIndex, const QString &iconCode = QString());
+    void configureNavigationItem(QTreeWidgetItem *item, const QString &text, int pageIndex, SegoeIcon::Type icon);
     void refreshNavigationIcons();
 
     void setNavigationExpanded(bool expanded, bool animated = true);

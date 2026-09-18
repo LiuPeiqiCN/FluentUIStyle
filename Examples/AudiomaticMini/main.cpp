@@ -12,11 +12,18 @@
 #include "fluentui3style.h"
 #endif
 
+#if defined(Q_OS_WIN)
+#include <windows.h>
+#endif
+
 namespace {
 
 void setupBundledQtPlugins()
 {
     const QString appDir = QCoreApplication::applicationDirPath();
+#if defined(Q_OS_WIN)
+    SetDllDirectoryW(reinterpret_cast<LPCWSTR>(QDir::toNativeSeparators(appDir).utf16()));
+#endif
     QCoreApplication::addLibraryPath(appDir);
     QCoreApplication::addLibraryPath(QDir(appDir).filePath(QStringLiteral("plugins")));
     QCoreApplication::addLibraryPath(QDir(appDir).filePath(QStringLiteral("../plugins")));

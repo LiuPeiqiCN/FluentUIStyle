@@ -29,14 +29,14 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: Windows / Qt 6.8.3 / MSVC
+          - name: Windows / Qt 6.6.3 / MSVC
             os: windows-2022
-            qt-version: 6.8.3
-            qt-arch: win64_msvc2022_64
+            qt-version: 6.6.3
+            qt-arch: win64_msvc2019_64
             qt-modules: qtmultimedia
             generator: Visual Studio 17 2022
             configure-args: -A x64
-            package-suffix: Windows-Qt6.8.3-x64
+            package-suffix: Windows-Qt6.6.3-x64
 
           - name: Windows / Qt 5.15.2 / MSVC
             os: windows-2022
@@ -143,21 +143,18 @@ jobs:
               Copy-Item "$stylesSourceDir/*.dll" -Destination $targetStyles -Force
           }
 
-          # 5. 写入标准 qt.conf，消除 CI 虚拟机硬编码路径漫游与超时
-          "[Paths]`r`nPrefix = .`r`nPlugins = plugins" | Set-Content -Path "$galleryDir/qt.conf" -Encoding Ascii
-
-          # 6. 运行 windeployqt 自动补全所有 Qt 运行环境
+          # 3. 官方标准原生 windeployqt 自动部署所有 Qt 运行环境
           $galleryExe = "$galleryDir/Gallery.exe"
-          Write-Host "Running windeployqt on $galleryExe..."
+          Write-Host "Running official windeployqt on $galleryExe..."
           $windeployCmd = Get-Command windeployqt.exe -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source
           if (-not $windeployCmd) {
               $windeployCmd = (Get-ChildItem -Path "$env:RUNNER_TEMP", "C:/Qt", "D:/a" -Filter "windeployqt.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1).FullName
           }
           if ($windeployCmd) {
               Write-Host "Found windeployqt: $windeployCmd"
-              & $windeployCmd --release --no-translations --compiler-runtime "$galleryExe"
+              & $windeployCmd --release --no-translations --compiler-runtime --no-opengl-sw "$galleryExe"
           } else {
-              windeployqt.exe --release --no-translations --compiler-runtime "$galleryExe"
+              windeployqt.exe --release --no-translations --compiler-runtime --no-opengl-sw "$galleryExe"
           }
 
           # 确保根目录绝不残留多余的 FluentUI3Style.dll

@@ -1789,11 +1789,25 @@ void MainWindow::setupAudiomaticPlayerPage()
     auto* pageLayout = new QHBoxLayout( m_audiomaticPlayerPage );
     pageLayout->setContentsMargins( 24, 24, 24, 24 );
 
+    // 懒加载：启动时不初始化重型多媒体组件与网络栈，首次切入该页时才按需创建
+    auto ensurePlayerLoaded = [ this, pageLayout ]() {
+        if ( pageLayout->count() > 0 )
+        {
+            return;
+        }
 #if QT_VERSION >= QT_VERSION_CHECK( 6, 0, 0 ) && !defined( Q_OS_ANDROID )
-    pageLayout->addWidget( new AudiomaticPlayerWidget( m_audiomaticPlayerPage ) );
+        pageLayout->addWidget( new AudiomaticPlayerWidget( m_audiomaticPlayerPage ) );
 #else
-    pageLayout->addWidget( new PageSpectrum( m_audiomaticPlayerPage ) );
+        pageLayout->addWidget( new PageSpectrum( m_audiomaticPlayerPage ) );
 #endif
+    };
+
+    connect( ui->stackedWidget, &QStackedWidget::currentChanged, this, [ this, ensurePlayerLoaded ]( int index ) {
+        if ( m_audiomaticPlayerPage && index == ui->stackedWidget->indexOf( m_audiomaticPlayerPage ) )
+        {
+            ensurePlayerLoaded();
+        }
+    } );
 
     ui->stackedWidget->addWidget( m_audiomaticPlayerPage );
 }

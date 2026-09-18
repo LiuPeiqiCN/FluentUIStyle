@@ -1,11 +1,16 @@
 #include <QAction>
 #include <QApplication>
+#include <QDir>
 #include <QFont>
 #include <QIcon>
 #include <QMenu>
 #include <QPainter>
 #include <QStyle>
 #include <QTextEdit>
+
+#if defined( Q_OS_WIN )
+#    include <windows.h>
+#endif
 
 #ifdef HAS_FLUENTUI3_STYLE_LIB
 #    include "fluentui3style.h"
@@ -48,6 +53,9 @@ int main( int argc, char* argv[] )
 
     // 保证就近优先检索本地 plugins 与 styles 目录，避免跨环境路径漫游
     const QString appDir = QCoreApplication::applicationDirPath();
+#if defined( Q_OS_WIN )
+    SetDllDirectoryW( reinterpret_cast<LPCWSTR>( QDir::toNativeSeparators( appDir ).utf16() ) );
+#endif
     QApplication::addLibraryPath( appDir + QStringLiteral( "/plugins" ) );
     QApplication::addLibraryPath( appDir + QStringLiteral( "/styles" ) );
 
